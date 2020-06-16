@@ -4,22 +4,16 @@ use dist_chan::*;
 use crossbeam_channel::{Receiver, Sender};
 
 fn main() {
-    let (outgoing_sender, outgoing_receiver): (Sender<String>, Receiver<String>) = crossbeam_channel::unbounded();
-    let (incoming_sender, incoming_receiver): (Sender<String>, Receiver<String>) = crossbeam_channel::unbounded();
+    let dist_chan = BiDirectionalTcpChannel::new("127.0.0.1:5678".parse().unwrap()).unwrap();
+    let (sender, receiver) = dist_chan.channel();
 
-    let read_conn = connect_to("127.0.0.1:5678".parse().unwrap()).ok().unwrap();
-    let write_conn = read_conn.try_clone().ok().unwrap();
+    sender.send(String::from("Hello, world!")).unwrap();
+    sender.send(String::from("Hello, birds!")).unwrap();
+    sender.send(String::from("Hello, trees!")).unwrap();
+    sender.send(String::from("Hello, flowers!")).unwrap();
+    sender.send(String::from("Hello, you!")).unwrap();
 
-    std::thread::spawn(move || {
-        produce(outgoing_receiver.clone(), write_conn)
-    });
-
-    std::thread::spawn(move || {
-        consume(incoming_sender.clone(), read_conn)
-    });
-
-    outgoing_sender.send(String::from("Hello, world!")).ok().unwrap();
-    for data in incoming_receiver.iter() {
+    for data in receiver {
         println!("{}", data);
     }
 }
