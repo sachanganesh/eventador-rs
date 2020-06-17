@@ -8,6 +8,5 @@ edition = "2018"
 
 [dependencies]
 crossbeam-channel = "0.4.2"
-tokio = { version = "0.2.21", features = ["macros", "tcp"] }
 serde = "1.0.112"
 bincode = "1.2.1"

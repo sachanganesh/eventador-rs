@@ -13,7 +13,8 @@ fn main() {
     sender.send(String::from("Hello, flowers!")).unwrap();
     sender.send(String::from("Hello, you!")).unwrap();
 
-    for data in receiver {
+    for i in 0..5 {
+        let data = receiver.recv().ok().unwrap();
         println!("{}", data);
     }
 }
