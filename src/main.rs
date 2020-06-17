@@ -1,7 +1,6 @@
 pub mod dist_chan;
 
 use dist_chan::*;
-use crossbeam_channel::{Receiver, Sender};
 
 fn main() {
     let dist_chan = BiDirectionalTcpChannel::new("127.0.0.1:5678".parse().unwrap()).unwrap();
@@ -13,7 +12,7 @@ fn main() {
     sender.send(String::from("Hello, flowers!")).unwrap();
     sender.send(String::from("Hello, you!")).unwrap();
 
-    for i in 0..5 {
+    for _i in 0..5 {
         let data = receiver.recv().ok().unwrap();
         println!("{}", data);
     }
