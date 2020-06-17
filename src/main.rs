@@ -12,7 +12,7 @@ fn main() {
     sender.send(String::from("Hello, flowers!")).unwrap();
     sender.send(String::from("Hello, you!")).unwrap();
 
-    for _i in 0..5 {
+    loop {
         let data = receiver.recv().ok().unwrap();
         println!("{}", data);
     }

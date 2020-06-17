@@ -5,6 +5,7 @@ use std::net::TcpStream;
 use crossbeam_channel::{Receiver, Sender, unbounded, bounded};
 use mio::{Events, Interest, Poll, Token};
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 pub struct BiDirectionalTcpChannel<T> {
     rx_chan: (Sender<T>, Receiver<T>),
@@ -34,16 +35,27 @@ impl<T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Dese
 
     pub fn from(ip_addr: SocketAddr, outgoing_chan: (Sender<T>, Receiver<T>), incoming_chan: (Sender<T>, Receiver<T>)) -> Result<Self, anyhow::Error> {
         let read_stream = connect_to(ip_addr)?;
-        let write_stream = read_stream.try_clone()?;
+        read_stream.set_read_timeout(Some(Duration::from_secs(1)));
 
-        let mut chan = BiDirectionalTcpChannel {
+        let write_stream = read_stream.try_clone()?;
+        write_stream.set_write_timeout(Some(Duration::from_secs(1)));
+
+        let _receiver = incoming_chan.0.clone();
+        let _sender   = outgoing_chan.1.clone();
+        std::thread::spawn(move || {
+            poll(
+                1024,
+                mio::net::TcpStream::from_std(read_stream),
+                mio::net::TcpStream::from_std(write_stream),
+                _receiver,
+                _sender
+            );
+        });
+
+        Ok(BiDirectionalTcpChannel {
             rx_chan: incoming_chan,
             tx_chan: outgoing_chan,
-        };
-
-        chan.poll(128, mio::net::TcpStream::from_std(read_stream), mio::net::TcpStream::from_std(write_stream))?;
-
-        return Ok(chan)
+        })
     }
 
     pub fn channel(&self) -> (Sender<T>, Receiver<T>) {
@@ -52,50 +64,6 @@ impl<T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Dese
 
     fn tcp_channel(&self) -> (&Sender<T>, &Receiver<T>) {
         (&self.rx_chan.0, &self.tx_chan.1)
-    }
-
-    pub fn poll(&mut self, num_events: usize, rx_stream: mio::net::TcpStream, tx_stream: mio::net::TcpStream) -> Result<JoinHandle<Result<(), anyhow::Error>>, anyhow::Error> {
-        let poller = Poll::new()?;
-        let mut events = Events::with_capacity(num_events);
-
-        const DATA_READ:  Token = Token(0);
-        const DATA_WRITE: Token = Token(1);
-
-        poller.registry().register(&mut rx_stream, DATA_READ, Interest::READABLE)?;
-        poller.registry().register(&mut tx_stream, DATA_WRITE, Interest::WRITABLE)?;
-
-        let handle = std::thread::spawn(move || {
-            let rx_chan = &mut self.rx_chan.0.clone();
-            let tx_chan = &mut self.tx_chan.1.clone();
-
-            loop {
-                poller.poll(&mut events, None)?;
-
-                for event in events.iter() {
-                    match event.token() {
-                        DATA_READ => {
-                            let data = bincode::deserialize_from(&rx_stream)?;
-                            rx_chan.send(data)?;
-                        },
-
-                        DATA_WRITE => {
-                            if let Ok(t) = tx_chan.recv() {
-                                let data = bincode::serialize(&t)?;
-                                tx_stream.write_all(&data)?
-                            } else {
-                                break;
-                            }
-                        },
-
-                        token => {
-                            println!("{:#?}", token);
-                        }
-                    }
-                }
-            }
-        });
-
-        return Ok(handle)
     }
 
     pub fn close(self) {
@@ -111,4 +79,46 @@ impl<T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Dese
 
 pub fn connect_to(ip_addr: SocketAddr) -> Result<TcpStream, anyhow::Error> {
     Ok(TcpStream::connect(ip_addr)?)
+}
+
+pub fn poll<T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>>(
+    num_events: usize,
+    mut rx_stream: mio::net::TcpStream,
+    mut tx_stream: mio::net::TcpStream,
+    rx_chan: Sender<T>,
+    tx_chan: Receiver<T>
+) -> Result<(), anyhow::Error> {
+    let mut poller = Poll::new().ok().unwrap();
+    let mut events = Events::with_capacity(num_events);
+
+    const DATA_READ: Token = Token(0);
+    const DATA_WRITE: Token = Token(1);
+
+    poller.registry().register(&mut rx_stream, DATA_READ, Interest::READABLE).unwrap();
+    poller.registry().register(&mut tx_stream, DATA_WRITE, Interest::WRITABLE).unwrap();
+
+    loop {
+        poller.poll(&mut events, None)?;
+
+        for event in events.iter() {
+            match event.token() {
+                DATA_READ => {
+                    while let Ok(data) = bincode::deserialize_from(&rx_stream) {
+                        rx_chan.send(data).unwrap();
+                    }
+                },
+
+                DATA_WRITE => {
+                    while let Ok(t) = tx_chan.try_recv() {
+                        let data = bincode::serialize(&t).unwrap();
+                        tx_stream.write_all(&data).unwrap();
+                    }
+                },
+
+                token => {
+                    println!("unhandled: {:#?}", token);
+                }
+            }
+        }
+    }
 }
