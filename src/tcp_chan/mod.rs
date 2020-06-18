@@ -15,7 +15,8 @@ pub struct BiDirectionalTcpChannel<T> {
     tx_chan: (Sender<T>, Receiver<T>),
 }
 
-impl<T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>> BiDirectionalTcpChannel<T> {
+impl<T> BiDirectionalTcpChannel<T>
+where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
     pub fn unbounded(ip_addr: SocketAddr) -> Result<Self, anyhow::Error> {
         Self::from(ip_addr, unbounded(), unbounded())
     }
@@ -37,7 +38,7 @@ impl<T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Dese
     }
 
     pub fn from(ip_addr: SocketAddr, outgoing_chan: (Sender<T>, Receiver<T>), incoming_chan: (Sender<T>, Receiver<T>)) -> Result<Self, anyhow::Error> {
-        let read_stream = connect_to(ip_addr)?;
+        let read_stream = Self::connect_to(ip_addr)?;
         read_stream.set_read_timeout(Some(Duration::from_secs(1)));
 
         let write_stream = read_stream.try_clone()?;
@@ -46,7 +47,7 @@ impl<T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Dese
         let _receiver = incoming_chan.0.clone();
         let _sender   = outgoing_chan.1.clone();
 
-        task::spawn(poll(
+        task::spawn(Self::poll(
             1024,
             Arc::new(MioTcpStream::from_std(read_stream)),
             Arc::new(MioTcpStream::from_std(write_stream)),
@@ -77,91 +78,87 @@ impl<T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Dese
         drop(left_write);
         drop(right_write);
     }
-}
 
-pub fn connect_to(ip_addr: SocketAddr) -> Result<TcpStream, anyhow::Error> {
-    Ok(TcpStream::connect(ip_addr)?)
-}
+    pub fn connect_to(ip_addr: SocketAddr) -> Result<TcpStream, anyhow::Error> {
+        Ok(TcpStream::connect(ip_addr)?)
+    }
 
-pub async fn poll<T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>>(
-    num_events: usize,
-    mut rx_stream: Arc<MioTcpStream>,
-    mut tx_stream: Arc<MioTcpStream>,
-    rx_chan: Sender<T>,
-    tx_chan: Receiver<T>
-) -> Result<(), anyhow::Error> {
-    let mut poller = Poll::new().ok().unwrap();
-    let mut events = Events::with_capacity(num_events);
+    pub async fn poll(
+        num_events: usize,
+        mut rx_stream: Arc<MioTcpStream>,
+        mut tx_stream: Arc<MioTcpStream>,
+        rx_chan: Sender<T>,
+        tx_chan: Receiver<T>
+    ) -> Result<(), anyhow::Error> {
+        let mut poller = Poll::new().ok().unwrap();
+        let mut events = Events::with_capacity(num_events);
 
-    const DATA_READ: Token = Token(0);
-    const DATA_WRITE: Token = Token(1);
+        const DATA_READ: Token = Token(0);
+        const DATA_WRITE: Token = Token(1);
 
-    poller.registry().register(Arc::get_mut(&mut rx_stream).unwrap(), DATA_READ, Interest::READABLE).unwrap();
-    poller.registry().register(Arc::get_mut(&mut tx_stream).unwrap(), DATA_WRITE, Interest::WRITABLE).unwrap();
+        poller.registry().register(Arc::get_mut(&mut rx_stream).unwrap(), DATA_READ, Interest::READABLE).unwrap();
+        poller.registry().register(Arc::get_mut(&mut tx_stream).unwrap(), DATA_WRITE, Interest::WRITABLE).unwrap();
 
-    loop {
-        poller.poll(&mut events, None)?;
+        loop {
+            poller.poll(&mut events, None)?;
 
-        for event in events.iter() {
-            match event.token() {
-                DATA_READ => {
-                    let rx_stream = rx_stream.clone();
-                    let rx_chan = rx_chan.clone();
+            for event in events.iter() {
+                match event.token() {
+                    DATA_READ => {
+                        let rx_stream = rx_stream.clone();
+                        let rx_chan = rx_chan.clone();
 
-                    task::spawn(async move {
-                        read_from_stream(&rx_stream, rx_chan)
-                    });
-                },
+                        task::spawn(async move {
+                            Self::read_from_stream(&rx_stream, rx_chan)
+                        });
+                    },
 
-                DATA_WRITE => {
-                    let tx_chan = tx_chan.clone();
-                    let tx_stream = tx_stream.clone();
+                    DATA_WRITE => {
+                        let tx_chan = tx_chan.clone();
+                        let tx_stream = tx_stream.clone();
 
-                    task::spawn(async move {
-                        write_to_stream(tx_chan, &tx_stream)
-                    });
-                },
+                        task::spawn(async move {
+                            Self::write_to_stream(tx_chan, &tx_stream)
+                        });
+                    },
 
-                token => {
-                    println!("unhandled: {:#?}", token);
+                    token => {
+                        println!("unhandled: {:#?}", token);
+                    }
                 }
             }
+
+            task::yield_now().await;
         }
-
-        task::yield_now().await;
     }
-}
 
-fn read_from_stream
-<T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>>
-(input: &MioTcpStream, mut output: Sender<T>) {
-    const MAX_REDUCTIONS: usize = 200;
-    let mut reductions = 0;
+    fn read_from_stream(input: &MioTcpStream, mut output: Sender<T>) {
+        const MAX_REDUCTIONS: usize = 200;
+        let mut reductions = 0;
 
-    while let Ok(data) = bincode::deserialize_from(input) {
-        if let Ok(_) = output.try_send(data) {
-            reductions += 1;
-        } else {
-            break;
-        }
-
-        if reductions == MAX_REDUCTIONS { break }
-    }
-}
-
-fn write_to_stream
-<T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>>
-(input: Receiver<T>, mut output: &MioTcpStream) {
-    const MAX_REDUCTIONS: usize = 200;
-    let mut reductions = 0;
-
-    while let Ok(t) = input.try_recv() {
-        if let Ok(data) = bincode::serialize(&t) {
-            if let Ok(_) = output.write_all(&data) {
+        while let Ok(data) = bincode::deserialize_from(input) {
+            if let Ok(_) = output.try_send(data) {
                 reductions += 1;
+            } else {
+                break;
             }
-        }
 
-        if reductions == MAX_REDUCTIONS { break }
+            if reductions == MAX_REDUCTIONS { break }
+        }
+    }
+
+    fn write_to_stream(input: Receiver<T>, mut output: &MioTcpStream) {
+        const MAX_REDUCTIONS: usize = 200;
+        let mut reductions = 0;
+
+        while let Ok(t) = input.try_recv() {
+            if let Ok(data) = bincode::serialize(&t) {
+                if let Ok(_) = output.write_all(&data) {
+                    reductions += 1;
+                }
+            }
+
+            if reductions == MAX_REDUCTIONS { break }
+        }
     }
 }
