@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.31"
+async-std = { version = "1.6.1", features = ["unstable"] }
 crossbeam-channel = "0.4.2"
 bincode = "1.2.1"
 mio = { version = "0.7.0", features = ["os-poll", "tcp"] }

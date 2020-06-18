@@ -1,9 +1,10 @@
-pub mod dist_chan;
+pub mod tcp_chan;
 
-use dist_chan::*;
+use tcp_chan::*;
 
 fn main() {
-    let dist_chan = BiDirectionalTcpChannel::new("127.0.0.1:5678".parse().unwrap()).unwrap();
+    let ip = "127.0.0.1:5678".parse().unwrap();
+    let dist_chan = BiDirectionalTcpChannel::unbounded(ip).unwrap();
     let (sender, receiver) = dist_chan.channel();
 
     sender.send(String::from("Hello, world!")).unwrap();
@@ -12,7 +13,7 @@ fn main() {
     sender.send(String::from("Hello, flowers!")).unwrap();
     sender.send(String::from("Hello, you!")).unwrap();
 
-    loop {
+    for _ in 0..5 {
         let data = receiver.recv().ok().unwrap();
         println!("{}", data);
     }
