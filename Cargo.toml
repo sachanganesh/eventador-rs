@@ -8,10 +8,10 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.31"
-async-bincode = "0.5.1"
 async-std = "1.6.2"
 bincode = "1.2.1"
+bytes = "0.5.5"
 crossbeam-channel = "0.4.2"
-futures-core = "0.3.5"
 mio = { version = "0.7.0", features = ["os-poll", "tcp"] }
+rand = "0.7.3"
 serde = "1.0.112"

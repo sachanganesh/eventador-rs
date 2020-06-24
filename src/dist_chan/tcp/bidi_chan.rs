@@ -14,11 +14,11 @@ pub struct BiDirectionalTcpChannel<T>
 
 impl<T> BiDirectionalTcpChannel<T>
 where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
-    pub fn unbounded<A: std::net::ToSocketAddrs>(ip_addrs: A) -> Result<Self> {
+    pub fn unbounded<A: ToSocketAddrs>(ip_addrs: A) -> Result<Self> {
         Self::from(ip_addrs, unbounded(), unbounded())
     }
 
-    pub fn bounded<A: std::net::ToSocketAddrs>(ip_addrs: A, outgoing_bound: Option<usize>, incoming_bound: Option<usize>) -> Result<Self> {
+    pub fn bounded<A: ToSocketAddrs>(ip_addrs: A, outgoing_bound: Option<usize>, incoming_bound: Option<usize>) -> Result<Self> {
         let outgoing_chan = if let Some(bound) = outgoing_bound {
             bounded(bound)
         } else {
@@ -34,15 +34,9 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
         Self::from(ip_addrs, outgoing_chan, incoming_chan)
     }
 
-    pub fn from<A: std::net::ToSocketAddrs>(ip_addrs: A, outgoing_chan: (Sender<T>, Receiver<T>), incoming_chan: (Sender<T>, Receiver<T>)) -> Result<Self> {
-        let read_stream = std::net::TcpStream::connect(ip_addrs)?;
-        let write_stream_raw = read_stream.try_clone()?;
-        let write_stream = TcpStream::from(write_stream_raw);
-
-        // let read_stream  = task::block_on(TcpStream::connect(ip_addrs))?;
-        // let write_stream = read_stream.clone();
-
-        // let reader = BufReader::new(read_stream);
+    pub fn from<A: ToSocketAddrs>(ip_addrs: A, outgoing_chan: (Sender<T>, Receiver<T>), incoming_chan: (Sender<T>, Receiver<T>)) -> Result<Self> {
+        let read_stream  = task::block_on(TcpStream::connect(ip_addrs))?;
+        let write_stream = read_stream.clone();
 
         let _receiver = outgoing_chan.1.clone();
         let _sender   = incoming_chan.0.clone();
@@ -68,56 +62,60 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
         task::block_on(self.writer.cancel());
     }
 
-    async fn read_from_stream(mut input: std::net::TcpStream, output: Sender<T>)
+    async fn read_from_stream(mut input: TcpStream, output: Sender<T>)
     where T: for<'de> serde::de::Deserialize<'de> {
-        use std::io::Read;
+        use bytes::{Buf, BytesMut};
 
-        const MAX_REDUCTIONS: usize = 2000;
-        let mut reductions: usize = 0;
+        let mut buffer = BytesMut::new();
+        buffer.resize(8192, 0);
 
-        let mut buffer = Vec::with_capacity(8192);
+        while let Ok(mut bytes_read) = input.read(&mut buffer).await {
+            while bytes_read > 0 {
+                if let Ok(data) = bincode::deserialize(&buffer) {
+                    if let Ok(serialized_size) = bincode::serialized_size(&data) {
+                        let serialized_size = serialized_size as usize;
+                        buffer.advance(serialized_size);
 
-        println!("reading!");
+                        bytes_read -= serialized_size;
+                        buffer.resize(8192, 0);
+                    } else {
+                        break;
+                    }
 
-        loop {
-            if let Ok(_) = input.read_exact(buffer.as_mut_slice()) {
-                if let Ok(data) = bincode::deserialize(buffer.as_slice()) {
-                    println!("got some data!");
-                    if let Ok(_) = output.try_send(data) {
-                        continue;
+                    if let Err(_) = output.try_send(data) {
+                        break;
                     }
                 }
             }
 
-            // println!("yielding read");
             task::yield_now().await
         }
     }
 
-    async fn write_to_stream(input: Receiver<T>, mut output: TcpStream) {
+    async fn write_to_stream(input: Receiver<T>, mut output: TcpStream)
+    where T: serde::ser::Serialize {
         const MAX_REDUCTIONS: usize = 2000;
         let mut reductions = 0;
 
-        println!("writing!");
-
         loop {
-            while let Ok(t) = input.recv() {
+            while let Ok(t) = input.try_recv() {
                 reductions += 1;
+
+                if let Ok(data) = bincode::serialize(&t) {
+                    if let Err(_) = output.write_all(&data).await {
+                        break;
+                    }
+                } else {
+                    break;
+                }
 
                 if reductions == MAX_REDUCTIONS {
                     reductions = 0;
                     break;
                 }
-
-                if let Ok(data) = bincode::serialize(&t) {
-                    if let Ok(_) = output.write_all(&data).await {
-                        println!("sent data out!");
-                        continue;
-                    }
-                }
             }
 
-            // println!("yielding write");
+            output.flush();
             task::yield_now().await
         }
     }
