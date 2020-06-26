@@ -5,7 +5,7 @@ use async_std::task;
 use crossbeam_channel::{Receiver, Sender};
 use uuid::Uuid;
 
-use dist_chan::tcp::bidi::BiDirectionalTcpChannel;
+use dist_chan::tcp::BiDirectionalTcpChannel;
 
 const MAX_MESSAGES: usize = 150;
 

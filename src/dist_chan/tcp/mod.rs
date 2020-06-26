@@ -1,10 +1,15 @@
-pub mod bidi;
-pub mod read;
-pub mod write;
+mod bidi;
+mod read;
+mod write;
+
 
 use async_std::prelude::*;
 use async_std::net::TcpStream;
 use crossbeam_channel::{Receiver, Sender};
+
+pub use bidi::*;
+pub use read::*;
+pub use write::*;
 
 const BUFFER_SIZE: usize = 8192;
 
