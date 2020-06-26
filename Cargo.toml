@@ -13,5 +13,5 @@ bincode = "1.2.1"
 bytes = "0.5.5"
 crossbeam-channel = "0.4.2"
 mio = { version = "0.7.0", features = ["os-poll", "tcp"] }
-rand = "0.7.3"
 serde = "1.0.112"
+uuid = { version = "0.8.1", features = ["serde", "v4"] }
