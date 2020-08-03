@@ -1,18 +1,16 @@
-pub mod dist_chan;
-
 use async_std::net::ToSocketAddrs;
 use async_std::task;
 use crossbeam_channel::{Receiver, Sender};
 use uuid::Uuid;
 
-use dist_chan::tcp::BiDirectionalTcpChannel;
+use stitch_q::tcp::BiDirectionalTcpChannel as DistChannel;
 
 const MAX_MESSAGES: usize = 150;
 
 fn main() -> Result<(), anyhow::Error> {
     let ip = task::block_on("127.0.0.1:5678".to_socket_addrs())?.next().unwrap();
 
-    let dist_chan = BiDirectionalTcpChannel::bounded(ip, Some(1), Some(1)).unwrap();
+    let dist_chan = DistChannel::unbounded(ip).unwrap();
     let (sender, receiver) = dist_chan.channel();
 
     let read_task   = task::spawn(async_read(receiver));

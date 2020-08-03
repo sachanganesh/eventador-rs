@@ -36,7 +36,7 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
 
         Ok(ReadOnlyTcpChannel {
             rx_chan: chan,
-            task:    task::spawn(crate::dist_chan::tcp::read_from_stream(stream, sender))
+            task:    task::spawn(crate::tcp::read_from_stream(stream, sender))
         })
     }
 

@@ -281,11 +281,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-std",
- "bincode",
- "bytes",
  "crossbeam-channel",
- "mio",
- "serde",
+ "stitch-q",
  "uuid",
 ]
 
@@ -552,6 +549,19 @@ dependencies = [
  "libc",
  "redox_syscall",
  "winapi",
+]
+
+[[package]]
+name = "stitch-q"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-std",
+ "bincode",
+ "bytes",
+ "crossbeam-channel",
+ "mio",
+ "serde",
 ]
 
 [[package]]

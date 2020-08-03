@@ -6,5 +6,10 @@ pub enum NodeFlags {
 
 pub struct HandshakeRequest {
     flags: Vec<NodeFlags>,
-    node_name: String,
+    node_name: Option<String>,
+}
+
+pub struct HandshakeResponse {
+    suggested_name: Option<String>,
+    challenge: String
 }
