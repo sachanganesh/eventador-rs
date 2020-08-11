@@ -1,12 +1,12 @@
 [package]
-name = "mat-mul-rs"
+name = "stitch-rs"
 version = "0.1.0"
 authors = ["Sachandhan Ganesh <sachan.ganesh@gmail.com>"]
 edition = "2018"
 
 [workspace]
 members = [
-    "stitch-q",
+    "stitch-channel",
 ]
 
 [dependencies]
@@ -17,4 +17,4 @@ env_logger = "0.7"
 log = "0.4"
 uuid = { version = "0.8.1", features = ["serde", "v4"] }
 
-stitch-q = { path = "stitch-q" }
+stitch-channel = { path = "stitch-channel" }

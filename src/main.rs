@@ -2,7 +2,7 @@ use async_std::task;
 use crossbeam_channel::{Receiver, Sender};
 use uuid::Uuid;
 
-use stitch_q::client::{BiDirectionalTcpChannel as TcpChannel, BiDirectionalTlsChannel as TlsChannel, async_tls::TlsConnector, rustls::ClientConfig, BiDirectionalTlsChannel};
+use stitch_channel::client::{BiDirectionalTcpChannel as TcpChannel, BiDirectionalTlsChannel as TlsChannel, async_tls::TlsConnector, rustls::ClientConfig, BiDirectionalTlsChannel};
 
 #[macro_use] extern crate log;
 
