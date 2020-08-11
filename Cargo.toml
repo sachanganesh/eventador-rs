@@ -13,6 +13,8 @@ members = [
 anyhow = "1.0.31"
 async-std = "1.6.2"
 crossbeam-channel = "0.4.2"
+env_logger = "0.7"
+log = "0.4"
 uuid = { version = "0.8.1", features = ["serde", "v4"] }
 
 stitch-q = { path = "stitch-q" }
