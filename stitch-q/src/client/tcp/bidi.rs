@@ -3,7 +3,7 @@ use async_std::net::*;
 use async_std::task;
 use crossbeam_channel::{Receiver, Sender, unbounded, bounded};
 
-use crate::tcp::{read, write};
+use crate::client::tcp::{read, write};
 
 pub struct BiDirectionalTcpChannel<T>
     where T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {

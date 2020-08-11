@@ -37,7 +37,7 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
 
         Ok(WriteOnlyTcpChannel {
             tx_chan: chan,
-            task:    task::spawn(crate::tcp::write_to_stream(receiver, stream))
+            task:    task::spawn(crate::client::tcp::write_to_stream(receiver, stream))
         })
     }
 

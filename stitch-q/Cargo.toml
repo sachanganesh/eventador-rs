@@ -13,6 +13,6 @@ bytes = "0.5.5"
 crossbeam-channel = "0.4.2"
 futures-util = "0.3.5"
 log = "0.4"
-mio = { version = "0.7.0", features = ["os-poll", "tcp"] }
+#mio = { version = "0.7.0", features = ["os-poll", "tcp"] }
 rustls = "0.18.0"
 serde = "1.0.112"

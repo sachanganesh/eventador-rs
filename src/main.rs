@@ -2,8 +2,7 @@ use async_std::task;
 use crossbeam_channel::{Receiver, Sender};
 use uuid::Uuid;
 
-use stitch_q::tcp::{BiDirectionalTcpChannel as TcpChannel, BiDirectionalTcpChannel};
-use stitch_q::tls::{BiDirectionalTlsChannel as TlsChannel, async_tls::TlsConnector, rustls::ClientConfig, BiDirectionalTlsChannel};
+use stitch_q::client::{BiDirectionalTcpChannel as TcpChannel, BiDirectionalTlsChannel as TlsChannel, async_tls::TlsConnector, rustls::ClientConfig, BiDirectionalTlsChannel};
 
 #[macro_use] extern crate log;
 
@@ -27,11 +26,11 @@ fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn test_tcp() -> BiDirectionalTcpChannel<String> {
+fn test_tcp() -> TcpChannel<String> {
     TcpChannel::unbounded(IP_ADDR).expect("it works")
 }
 
-fn test_tls() -> BiDirectionalTlsChannel<String> {
+fn test_tls() -> TlsChannel<String> {
     let file = std::fs::read("/home/svganesh/Documents/tools/echo-server/async-tls/tests/end.chain").unwrap();
     let mut pem = std::io::Cursor::new(file);
 

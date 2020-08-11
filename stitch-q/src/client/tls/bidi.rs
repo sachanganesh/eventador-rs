@@ -5,7 +5,7 @@ use async_tls::TlsConnector;
 use crossbeam_channel::{Receiver, Sender, unbounded, bounded};
 use futures_util::io::AsyncReadExt;
 
-use crate::tls::{read, write};
+use crate::client::tls::{read, write};
 
 pub struct BiDirectionalTlsChannel<T>
     where T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
