@@ -7,13 +7,13 @@ use futures_util::io::AsyncReadExt;
 
 use crate::client::tls::{read, write};
 
-pub struct BiDirectionalTlsChannel<T>
+pub struct BiDirectionalTlsClient<T>
     where T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
-    reader: read::ReadOnlyTlsChannel<T>,
-    writer: write::WriteOnlyTlsChannel<T>
+    reader: read::ReadOnlyTlsClient<T>,
+    writer: write::WriteOnlyTlsClient<T>
 }
 
-impl<T> BiDirectionalTlsChannel<T>
+impl<T> BiDirectionalTlsClient<T>
 where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
     pub fn unbounded<A: ToSocketAddrs + std::convert::AsRef<str>>(ip_addrs: A, domain: &str, connector: TlsConnector) -> Result<Self> {
         Self::from_parts(ip_addrs, domain, connector, unbounded(), unbounded())
@@ -52,9 +52,9 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
         let encrypted_stream = task::block_on(connector.connect(domain, stream))?;
         let (read_stream, write_stream) = encrypted_stream.split();
 
-        Ok(BiDirectionalTlsChannel {
-            reader: read::ReadOnlyTlsChannel::from_raw_parts(read_stream, incoming_chan)?,
-            writer: write::WriteOnlyTlsChannel::from_raw_parts(write_stream, outgoing_chan)?
+        Ok(BiDirectionalTlsClient {
+            reader: read::ReadOnlyTlsClient::from_raw_parts(read_stream, incoming_chan)?,
+            writer: write::WriteOnlyTlsClient::from_raw_parts(write_stream, outgoing_chan)?
         })
     }
 

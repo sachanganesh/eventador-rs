@@ -5,13 +5,13 @@ use async_tls::{TlsConnector, client::TlsStream};
 use crossbeam_channel::{Receiver, Sender, unbounded, bounded};
 use futures_util::io::{AsyncReadExt, WriteHalf};
 
-pub struct WriteOnlyTlsChannel<T>
+pub struct WriteOnlyTlsClient<T>
 where T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
     pub(crate) tx_chan: (Sender<T>, Receiver<T>),
     pub(crate) task:  task::JoinHandle<anyhow::Result<()>>
 }
 
-impl<T> WriteOnlyTlsChannel<T>
+impl<T> WriteOnlyTlsClient<T>
 where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
     pub fn unbounded<A: ToSocketAddrs + std::convert::AsRef<str>>(ip_addrs: A) -> Result<Self> {
         Self::from_parts(ip_addrs, unbounded())
@@ -42,7 +42,7 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
     pub fn from_raw_parts(stream: WriteHalf<TlsStream<TcpStream>>, chan: (Sender<T>, Receiver<T>)) -> Result<Self> {
         let receiver = chan.1.clone();
 
-        Ok(WriteOnlyTlsChannel {
+        Ok(WriteOnlyTlsClient {
             tx_chan: chan,
             task:    task::spawn(crate::client::tls::write_to_stream(receiver, stream))
         })

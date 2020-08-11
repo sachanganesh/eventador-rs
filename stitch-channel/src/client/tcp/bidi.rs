@@ -5,13 +5,13 @@ use crossbeam_channel::{Receiver, Sender, unbounded, bounded};
 
 use crate::client::tcp::{read, write};
 
-pub struct BiDirectionalTcpChannel<T>
+pub struct BiDirectionalTcpClient<T>
     where T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
-    reader: read::ReadOnlyTcpChannel<T>,
-    writer: write::WriteOnlyTcpChannel<T>
+    reader: read::ReadOnlyTcpClient<T>,
+    writer: write::WriteOnlyTcpClient<T>
 }
 
-impl<T> BiDirectionalTcpChannel<T>
+impl<T> BiDirectionalTcpClient<T>
 where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
     pub fn unbounded<A: ToSocketAddrs>(ip_addrs: A) -> Result<Self> {
         Self::from_parts(ip_addrs, unbounded(), unbounded())
@@ -37,9 +37,9 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
         let read_stream  = task::block_on(TcpStream::connect(ip_addrs))?;
         let write_stream = read_stream.clone();
 
-        Ok(BiDirectionalTcpChannel {
-            reader: read::ReadOnlyTcpChannel::from_raw_parts(read_stream, incoming_chan)?,
-            writer: write::WriteOnlyTcpChannel::from_raw_parts(write_stream, outgoing_chan)?
+        Ok(BiDirectionalTcpClient {
+            reader: read::ReadOnlyTcpClient::from_raw_parts(read_stream, incoming_chan)?,
+            writer: write::WriteOnlyTcpClient::from_raw_parts(write_stream, outgoing_chan)?
         })
     }
 

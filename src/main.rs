@@ -2,7 +2,7 @@ use async_std::task;
 use crossbeam_channel::{Receiver, Sender};
 use uuid::Uuid;
 
-use stitch_channel::client::{BiDirectionalTcpChannel as TcpChannel, BiDirectionalTlsChannel as TlsChannel, async_tls::TlsConnector, rustls::ClientConfig, BiDirectionalTlsChannel};
+use stitch_channel::client::{BiDirectionalTcpClient as TcpChannel, BiDirectionalTlsClient as TlsChannel, async_tls::TlsConnector, rustls::ClientConfig, BiDirectionalTlsClient};
 
 #[macro_use] extern crate log;
 
@@ -13,8 +13,8 @@ const IP_ADDR: &str = "localhost:5678";
 fn main() -> Result<(), anyhow::Error> {
     env_logger::init();
 
-    // let dist_chan = test_tcp();
-    let dist_chan = test_tls();
+    let dist_chan = test_tcp();
+    // let dist_chan = test_tls();
 
     let (sender, receiver): (Sender<String>, Receiver<String>) = dist_chan.channel();
 
