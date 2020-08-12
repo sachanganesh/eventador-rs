@@ -1,17 +1,17 @@
 use async_std::io::*;
 use async_std::net::*;
 use async_std::task;
-use crossbeam_channel::{Receiver, Sender, unbounded, bounded};
+use async_channel::{Receiver, Sender, unbounded, bounded};
 
-use crate::client::tcp::{read, write};
+use crate::tcp::{read, write};
 
-pub struct BiDirectionalTcpClient<T>
+pub struct BiDirectionalTcpChannel<T>
     where T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
-    reader: read::ReadOnlyTcpClient<T>,
-    writer: write::WriteOnlyTcpClient<T>
+    reader: read::ReadOnlyTcpChannel<T>,
+    writer: write::WriteOnlyTcpChannel<T>
 }
 
-impl<T> BiDirectionalTcpClient<T>
+impl<T> BiDirectionalTcpChannel<T>
 where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
     pub fn unbounded<A: ToSocketAddrs>(ip_addrs: A) -> Result<Self> {
         Self::from_parts(ip_addrs, unbounded(), unbounded())
@@ -37,9 +37,20 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
         let read_stream  = task::block_on(TcpStream::connect(ip_addrs))?;
         let write_stream = read_stream.clone();
 
-        Ok(BiDirectionalTcpClient {
-            reader: read::ReadOnlyTcpClient::from_raw_parts(read_stream, incoming_chan)?,
-            writer: write::WriteOnlyTcpClient::from_raw_parts(write_stream, outgoing_chan)?
+        Self::from_raw_parts(
+            (read_stream, write_stream),
+            outgoing_chan,
+            incoming_chan
+        )
+    }
+
+    pub(crate) fn from_raw_parts((read_stream, write_stream): (TcpStream, TcpStream),
+                                 outgoing_chan: (Sender<T>, Receiver<T>),
+                                 incoming_chan: (Sender<T>, Receiver<T>),
+    ) -> Result<Self> {
+        Ok(BiDirectionalTcpChannel {
+            reader: read::ReadOnlyTcpChannel::from_raw_parts(read_stream, incoming_chan)?,
+            writer: write::WriteOnlyTcpChannel::from_raw_parts(write_stream, outgoing_chan)?
         })
     }
 

@@ -2,7 +2,7 @@ use async_std::io::*;
 use async_std::net::*;
 use async_std::task;
 use async_tls::{TlsConnector, client::TlsStream};
-use crossbeam_channel::{Receiver, Sender, unbounded, bounded};
+use async_channel::{Receiver, Sender, unbounded, bounded};
 use futures_util::io::{AsyncReadExt, ReadHalf};
 
 pub struct ReadOnlyTlsClient<T>
@@ -43,7 +43,7 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
 
         Ok(ReadOnlyTlsClient {
             rx_chan: chan,
-            task:    task::spawn(crate::client::tls::read_from_stream(stream, sender))
+            task:    task::spawn(crate::tls::read_from_stream(stream, sender))
         })
     }
 

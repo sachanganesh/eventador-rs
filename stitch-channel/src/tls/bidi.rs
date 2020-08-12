@@ -2,10 +2,10 @@ use async_std::io::*;
 use async_std::net::*;
 use async_std::task;
 use async_tls::TlsConnector;
-use crossbeam_channel::{Receiver, Sender, unbounded, bounded};
+use async_channel::{Receiver, Sender, unbounded, bounded};
 use futures_util::io::AsyncReadExt;
 
-use crate::client::tls::{read, write};
+use crate::tls::{read, write};
 
 pub struct BiDirectionalTlsClient<T>
     where T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {

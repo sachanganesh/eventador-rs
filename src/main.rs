@@ -1,17 +1,23 @@
 use async_std::task;
-use crossbeam_channel::{Receiver, Sender};
+use async_channel::{Receiver, Sender};
 use uuid::Uuid;
 
-use stitch_channel::client::{BiDirectionalTcpClient as TcpChannel, BiDirectionalTlsClient as TlsChannel, async_tls::TlsConnector, rustls::ClientConfig, BiDirectionalTlsClient};
+use stitch_channel::{tcp::BiDirectionalTcpChannel as TcpChannel, tls::{BiDirectionalTlsClient as TlsChannel, async_tls::TlsConnector, rustls::ClientConfig, BiDirectionalTlsClient}};
+use stitch_channel::tcp::TcpServer;
+use std::time::Duration;
 
 #[macro_use] extern crate log;
 
-const MAX_MESSAGES: usize = 1; // 150;
+const MAX_MESSAGES: usize = 150;
 const DOMAIN: &str = "localhost";
 const IP_ADDR: &str = "localhost:5678";
 
 fn main() -> Result<(), anyhow::Error> {
     env_logger::init();
+
+    let echo_server = TcpServer::unbounded(IP_ADDR, handle_connections)?;
+
+    task::block_on(task::sleep(Duration::from_secs(1)));
 
     let dist_chan = test_tcp();
     // let dist_chan = test_tls();
@@ -24,6 +30,15 @@ fn main() -> Result<(), anyhow::Error> {
     task::block_on(read_task);
 
     Ok(())
+}
+
+async fn handle_connections((sender, receiver): (Sender<String>, Receiver<String>)) {
+    debug!("Starting echo loop");
+
+    while let Ok(data) = receiver.recv().await {
+        info!("Echoing: {}", data);
+        sender.send(data).await.expect("it works");
+    }
 }
 
 fn test_tcp() -> TcpChannel<String> {
@@ -54,7 +69,7 @@ fn test_tls() -> TlsChannel<String> {
 
 async fn async_read(receiver: Receiver<String>) {
     for i in 0..MAX_MESSAGES + 1 {
-        if let Ok(data) = receiver.recv() {
+        if let Ok(data) = receiver.recv().await {
             info!("Received #{}: {}", i, data);
         }
     }
@@ -66,7 +81,7 @@ async fn async_write(sender: Sender<String>) -> Result<(), anyhow::Error> {
         let msg = format!("Hello, {}", id);
 
         info!("Sending #{}: {}", i, msg);
-        sender.send(msg)?;
+        sender.send(msg).await?;
     }
 
     Ok(())
