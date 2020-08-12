@@ -1,19 +1,19 @@
 use async_std::io::*;
 use async_std::net::*;
 use async_std::task;
-use async_tls::TlsConnector;
+use async_tls::{client::TlsStream, TlsConnector};
 use async_channel::{Receiver, Sender, unbounded, bounded};
-use futures_util::io::AsyncReadExt;
+use futures_util::io::{AsyncReadExt, ReadHalf, WriteHalf};
 
-use crate::tls::{read, write};
+use crate::tls::client::{read, write};
 
-pub struct BiDirectionalTlsClient<T>
+pub struct BiDirectionalTlsChannel<T>
     where T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
-    reader: read::ReadOnlyTlsClient<T>,
-    writer: write::WriteOnlyTlsClient<T>
+    reader: read::ReadOnlyTlsChannel<T>,
+    writer: write::WriteOnlyTlsChannel<T>
 }
 
-impl<T> BiDirectionalTlsClient<T>
+impl<T> BiDirectionalTlsChannel<T>
 where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
     pub fn unbounded<A: ToSocketAddrs + std::convert::AsRef<str>>(ip_addrs: A, domain: &str, connector: TlsConnector) -> Result<Self> {
         Self::from_parts(ip_addrs, domain, connector, unbounded(), unbounded())
@@ -50,11 +50,18 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
         stream.set_nodelay(true)?;
 
         let encrypted_stream = task::block_on(connector.connect(domain, stream))?;
-        let (read_stream, write_stream) = encrypted_stream.split();
+        let streams = encrypted_stream.split();
 
-        Ok(BiDirectionalTlsClient {
-            reader: read::ReadOnlyTlsClient::from_raw_parts(read_stream, incoming_chan)?,
-            writer: write::WriteOnlyTlsClient::from_raw_parts(write_stream, outgoing_chan)?
+        Self::from_raw_parts(streams, outgoing_chan, incoming_chan)
+    }
+
+    pub(crate) fn from_raw_parts((read_stream, write_stream): (ReadHalf<TlsStream<TcpStream>>, WriteHalf<TlsStream<TcpStream>>),
+                                 outgoing_chan: (Sender<T>, Receiver<T>),
+                                 incoming_chan: (Sender<T>, Receiver<T>),
+    ) -> Result<Self> {
+        Ok(BiDirectionalTlsChannel {
+            reader: read::ReadOnlyTlsChannel::from_raw_parts(read_stream, incoming_chan)?,
+            writer: write::WriteOnlyTlsChannel::from_raw_parts(write_stream, outgoing_chan)?
         })
     }
 

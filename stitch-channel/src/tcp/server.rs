@@ -10,7 +10,7 @@ use std::borrow::BorrowMut;
 
 
 pub struct TcpServer {
-    accept_loop_task: task::JoinHandle<()>
+    accept_loop_task: task::JoinHandle<Result<()>>
 }
 
 impl TcpServer {
@@ -32,10 +32,11 @@ impl TcpServer {
                 trace!("Reading from the stream of incoming connections");
                 match incoming_stream.next().await {
                     Some(Ok(write_stream)) => {
+                        let addr = write_stream.peer_addr()?;
                         let read_stream = write_stream.clone();
                         match BiDirectionalTcpChannel::from_raw_parts((read_stream, write_stream),unbounded(), unbounded()) {
                             Ok(dist_chan) => {
-                                info!("Accepted a connection and passing to handler fn");
+                                info!("Accepted a connection from {} and passing to handler fn", addr);
                                 task::spawn(connection_handler(dist_chan.channel()));
                             },
 
@@ -56,7 +57,7 @@ impl TcpServer {
         })
     }
 
-    pub fn accept_loop_task(&self) -> &task::JoinHandle<()> {
+    pub fn accept_loop_task(&self) -> &task::JoinHandle<Result<()>> {
         &self.accept_loop_task
     }
 
