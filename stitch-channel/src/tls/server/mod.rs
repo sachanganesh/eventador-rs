@@ -82,7 +82,7 @@ async fn read_from_stream<T>(mut input: ReadHalf<TlsStream<TcpStream>>, output: 
     use bincode::config::Options;
     use bytes::{Buf, BytesMut};
 
-    let converter = bincode::options().with_limit(1_000_000);
+    let converter = bincode::options().with_limit(BUFFER_SIZE as u64);
 
     let mut buffer = BytesMut::new();
     buffer.resize(BUFFER_SIZE, 0);
@@ -160,7 +160,7 @@ async fn write_to_stream<T>(input: Receiver<T>, mut output: WriteHalf<TlsStream<
                     // @todo provide retry mechanism with backoff
                     if let Ok(_) = output.write_all(&data).await {
                         debug!("Wrote {} bytes to TLS stream", data.len());
-                        output.flush();
+                        output.flush().await?;
                     }
                 }
             },

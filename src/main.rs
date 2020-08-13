@@ -10,7 +10,7 @@ use std::fmt::Error;
 
 #[macro_use] extern crate log;
 
-const MAX_MESSAGES: usize = 5;
+const MAX_MESSAGES: usize = 1;
 const DOMAIN: &str = "localhost";
 const IP_ADDR: &str = "localhost:5678";
 
@@ -78,9 +78,11 @@ fn test_tls() -> Result<TlsChannel<String>, anyhow::Error> {
 }
 
 async fn async_read(receiver: Receiver<String>) {
-    for i in 0..MAX_MESSAGES + 1 {
+    let mut i: usize = 0;
+    loop { // for i in 0..MAX_MESSAGES + 1 {
         if let Ok(data) = receiver.recv().await {
             info!("Received #{}: {}", i, data);
+            i += 1;
         }
     }
 }

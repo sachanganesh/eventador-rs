@@ -97,7 +97,7 @@ where T: 'static + Send + Sync + serde::ser::Serialize {
                     // @todo provide retry mechanism with backoff
                     if let Ok(_) = output.write_all(&data).await {
                         debug!("Wrote {} bytes to TLS stream", data.len());
-                        output.flush();
+                        output.flush().await?;
                     }
                 }
             },
