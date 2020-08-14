@@ -5,26 +5,27 @@ pub(crate) mod write;
 pub use async_tls;
 pub use rustls;
 
+use std::io::Cursor;
 use async_std::net::TcpStream;
 use async_tls::client::TlsStream;
 use async_channel::{Receiver, Sender};
+use bytes::{Buf, BytesMut};
 use futures_util::{AsyncWriteExt, AsyncReadExt, io::{ReadHalf, WriteHalf}};
 use log::*;
+use rmp_serde::{encode, decode};
+use serde::Deserialize;
 
 const BUFFER_SIZE: usize = 8192;
 
 async fn read_from_stream<T>(mut input: ReadHalf<TlsStream<TcpStream>>, output: Sender<T>) -> anyhow::Result<()>
 where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
     use std::convert::TryInto;
-    use bincode::config::Options;
-    use bytes::{Buf, BytesMut};
-
-    let converter = bincode::options().with_limit(1_000_000);
 
     let mut buffer = BytesMut::new();
     buffer.resize(BUFFER_SIZE, 0);
 
     let mut pending: Option<BytesMut> = None;
+    let mut prev_position: Option<u64> = None;
 
     debug!("Starting read loop for TLS connection");
     loop {
@@ -45,20 +46,23 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
 
                 let mut bytes_read: u64 = bytes_read_raw.try_into()?;
                 while bytes_read > 0 {
-                    debug!("{} bytes from TLS stream still unprocessed", bytes_read_raw);
+                    debug!("{} bytes from TLS stream still unprocessed", bytes_read);
 
-                    let bytes = std::io::Cursor::new(buffer.as_ref());
-                    match converter.deserialize_from(bytes) {
+                    let buf_read = Cursor::new(buffer.as_ref());
+
+                    let mut decoder = decode::Deserializer::new(buf_read);
+                    prev_position = None;
+
+                    match Deserialize::deserialize(&mut decoder) {
                         Ok(data) => {
-                            if let Ok(serialized_size) = converter.serialized_size(&data) {
-                                buffer.advance(serialized_size.try_into()?);
-                                bytes_read = bytes_read.saturating_sub(serialized_size);
+                            let serialized_size = match prev_position {
+                                Some(pos) => decoder.position() - pos,
+                                None => decoder.position()
+                            };
+                            buffer.advance(serialized_size.try_into()?);
 
-                                debug!("Consumed message of size {} bytes, {} bytes still unprocessed", serialized_size, bytes_read);
-                            } else {
-                                warn!("Could not determine serialized size of already parsed data");
-                                break;
-                            }
+                            bytes_read -= serialized_size;
+                            debug!("Consumed a message, {} bytes still unprocessed", bytes_read);
 
                             debug!("Sending deserialized data to channel");
                             if let Err(err) = output.send(data).await {
@@ -79,9 +83,7 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
                 buffer.resize(BUFFER_SIZE, 0);
             },
 
-            Err(err) => {
-                return Err(anyhow::Error::from(err))
-            }
+            Err(err) => return Err(anyhow::Error::from(err))
         }
     }
 }
@@ -93,11 +95,26 @@ where T: 'static + Send + Sync + serde::ser::Serialize {
         trace!("Waiting for writable data that will be sent to the stream");
         match input.recv().await {
             Ok(msg) => {
-                if let Ok(data) = bincode::serialize(&msg) {
-                    // @todo provide retry mechanism with backoff
-                    if let Ok(_) = output.write_all(&data).await {
-                        debug!("Wrote {} bytes to TLS stream", data.len());
-                        output.flush().await?;
+                debug!("Received message from channel to be written stream");
+                let mut buffer = Vec::new();
+                let mut serializer = encode::Serializer::new(&mut buffer);
+
+                match msg.serialize(&mut serializer) {
+                    Ok(_) => {
+                        match output.write_all(buffer.as_slice()).await {
+                            Ok(_) => {
+                                debug!("Wrote {:?} as {} bytes to TLS stream", buffer, buffer.len());
+                                output.flush().await;
+                            },
+
+                            Err(err) => {
+                                error!("Could not write data to TLS stream: {}", err)
+                            }
+                        }
+                    },
+
+                    Err(err) => {
+                        error!("Could not serialize message: {}", err);
                     }
                 }
             },

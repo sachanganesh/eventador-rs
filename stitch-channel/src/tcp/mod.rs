@@ -7,6 +7,7 @@ pub use bidi::*;
 pub use read::*;
 pub use write::*;
 
+use std::io::Cursor;
 use async_channel::{Receiver, Sender};
 use async_std::prelude::*;
 use async_std::net::TcpStream;
@@ -15,7 +16,6 @@ use bytes::{Buf, BytesMut};
 use log::*;
 use rmp_serde::{encode, decode};
 use serde::Deserialize;
-use std::io::Cursor;
 
 
 const BUFFER_SIZE: usize = 8192;
@@ -53,7 +53,6 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
 
                     let buf_read = Cursor::new(buffer.as_ref());
 
-                    // let mut decoder = decode::Deserializer::from_read_ref(&buffer);
                     let mut decoder = decode::Deserializer::new(buf_read);
                     prev_position = None;
 
