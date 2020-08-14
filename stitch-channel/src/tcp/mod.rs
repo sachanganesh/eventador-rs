@@ -1,18 +1,21 @@
 pub(crate) mod bidi;
 pub(crate) mod read;
 pub(crate) mod write;
-pub(crate) mod server;
+pub mod server;
 
 pub use bidi::*;
 pub use read::*;
 pub use write::*;
-pub use server::*;
 
+use async_channel::{Receiver, Sender};
 use async_std::prelude::*;
 use async_std::net::TcpStream;
 use async_std::task;
-use async_channel::{Receiver, Sender};
+use bytes::{Buf, BytesMut};
 use log::*;
+use rmp_serde::{encode, decode};
+use serde::Deserialize;
+use std::io::Cursor;
 
 
 const BUFFER_SIZE: usize = 8192;
@@ -20,12 +23,12 @@ const BUFFER_SIZE: usize = 8192;
 async fn read_from_stream<T>(mut input: TcpStream, output: Sender<T>) -> anyhow::Result<()>
 where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
     use std::convert::TryInto;
-    use bytes::{Buf, BytesMut};
 
     let mut buffer = BytesMut::new();
     buffer.resize(BUFFER_SIZE, 0);
 
     let mut pending: Option<BytesMut> = None;
+    let mut prev_position: Option<u64> = None;
 
     debug!("Starting read loop for TCP connection");
     loop {
@@ -46,20 +49,26 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
 
                 let mut bytes_read: u64 = bytes_read_raw.try_into()?;
                 while bytes_read > 0 {
-                    debug!("{} bytes from TCP stream still unprocessed", bytes_read_raw);
+                    debug!("{} bytes from TCP stream still unprocessed", bytes_read);
 
-                    match bincode::deserialize(&buffer) {
+                    let buf_read = Cursor::new(buffer.as_ref());
+
+                    // let mut decoder = decode::Deserializer::from_read_ref(&buffer);
+                    let mut decoder = decode::Deserializer::new(buf_read);
+                    prev_position = None;
+
+                    match Deserialize::deserialize(&mut decoder) {
                         Ok(data) => {
-                            if let Ok(serialized_size) = bincode::serialized_size(&data) {
-                                buffer.advance(serialized_size.try_into()?);
-                                bytes_read = bytes_read.saturating_sub(serialized_size);
+                            let serialized_size = match prev_position {
+                                Some(pos) => decoder.position() - pos,
+                                None => decoder.position()
+                            };
+                            buffer.advance(serialized_size.try_into()?);
 
-                                debug!("Consumed message of size {} bytes, {} bytes still unprocessed", serialized_size, bytes_read);
-                            } else {
-                                warn!("Could not determine serialized size of already parsed data");
-                                break;
-                            }
+                            bytes_read -= serialized_size;
+                            debug!("Consumed a message, {} bytes still unprocessed", bytes_read);
 
+                            debug!("Sending deserialized data to channel");
                             if let Err(err) = output.send(data).await {
                                 error!("Encountered error while sending data to channel from TCP stream: {:#?}", err);
                                 return Err(anyhow::Error::from(err))
@@ -90,10 +99,26 @@ where T: 'static + Send + Sync + serde::ser::Serialize {
         trace!("Waiting for writable data that will be sent to the stream");
         match input.recv().await {
             Ok(msg) => {
-                if let Ok(data) = bincode::serialize(&msg) {
-                    if let Ok(_) = output.write_all(&data).await {
-                        debug!("Wrote {} bytes to TCP stream", data.len());
-                        output.flush().await;
+                debug!("Received message from channel to be written stream");
+                let mut buffer = Vec::new();
+                let mut serializer = encode::Serializer::new(&mut buffer);
+
+                match msg.serialize(&mut serializer) {
+                    Ok(_) => {
+                        match output.write_all(buffer.as_slice()).await {
+                            Ok(_) => {
+                                debug!("Wrote {:?} as {} bytes to TCP stream", buffer, buffer.len());
+                                output.flush().await;
+                            },
+
+                            Err(err) => {
+                                error!("Could not write data to TCP stream: {}", err)
+                            }
+                        }
+                    },
+
+                    Err(err) => {
+                        error!("Could not serialize message: {}", err);
                     }
                 }
             },

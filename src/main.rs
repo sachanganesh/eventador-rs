@@ -3,29 +3,30 @@ use async_channel::{Receiver, Sender};
 use std::{io::BufReader, fs::File, time::Duration};
 use uuid::Uuid;
 
-use stitch_channel::tcp::{BiDirectionalTcpChannel as TcpChannel, TcpServer};
+use stitch_channel::tcp::{BiDirectionalTcpChannel as TcpChannel, server::TcpServer};
 use stitch_channel::tls::{BiDirectionalTlsChannel as TlsChannel, TlsServer, async_tls::{TlsAcceptor, TlsConnector}, rustls::{ClientConfig, ServerConfig, NoClientAuth}};
 use stitch_channel::tls::rustls::internal::pemfile::{certs, rsa_private_keys};
 use std::fmt::Error;
 
 #[macro_use] extern crate log;
 
-const MAX_MESSAGES: usize = 1;
+const MAX_MESSAGES: usize = 150;
 const DOMAIN: &str = "localhost";
 const IP_ADDR: &str = "localhost:5678";
 
-fn main() -> Result<(), anyhow::Error> {
+#[async_std::main]
+async fn main() -> Result<(), anyhow::Error> {
     env_logger::init();
 
-    // let dist_chan = test_tcp()?;
-    let dist_chan = test_tls()?;
+    let dist_chan = test_tcp()?;
+    // let dist_chan = test_tls()?;
 
     let (sender, receiver): (Sender<String>, Receiver<String>) = dist_chan.channel();
 
     let read_task = task::spawn(async_read(receiver));
     let _write_task = task::spawn(async_write(sender));
 
-    task::block_on(read_task);
+    read_task.await;
 
     Ok(())
 }
