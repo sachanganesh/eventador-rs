@@ -1,7 +1,7 @@
 use async_std::io::*;
 use async_std::net::*;
 use async_std::task;
-use async_channel::{Receiver, Sender, unbounded, bounded};
+use async_channel::{Receiver, Sender};
 
 use crate::tcp::{read, write};
 
@@ -14,33 +14,21 @@ pub struct BiDirectionalTcpChannel<T>
 impl<T> BiDirectionalTcpChannel<T>
 where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
     pub fn unbounded<A: ToSocketAddrs>(ip_addrs: A) -> Result<Self> {
-        Self::from_parts(ip_addrs, unbounded(), unbounded())
+        Self::from_parts(ip_addrs, None, None)
     }
 
     pub fn bounded<A: ToSocketAddrs>(ip_addrs: A, outgoing_bound: Option<usize>, incoming_bound: Option<usize>) -> Result<Self> {
-        let outgoing_chan = if let Some(bound) = outgoing_bound {
-            bounded(bound)
-        } else {
-            unbounded()
-        };
-
-        let incoming_chan = if let Some(bound) = incoming_bound {
-            bounded(bound)
-        } else {
-            unbounded()
-        };
-
-        Self::from_parts(ip_addrs, outgoing_chan, incoming_chan)
+        Self::from_parts(ip_addrs, outgoing_bound, incoming_bound)
     }
 
-    pub fn from_parts<A: ToSocketAddrs>(ip_addrs: A, outgoing_chan: (Sender<T>, Receiver<T>), incoming_chan: (Sender<T>, Receiver<T>)) -> Result<Self> {
+    pub fn from_parts<A: ToSocketAddrs>(ip_addrs: A, outgoing_bound: Option<usize>, incoming_bound: Option<usize>) -> Result<Self> {
         let read_stream  = task::block_on(TcpStream::connect(ip_addrs))?;
         let write_stream = read_stream.clone();
 
         Self::from_raw_parts(
             (read_stream, write_stream),
-            outgoing_chan,
-            incoming_chan
+            crate::channel_factory(outgoing_bound),
+            crate::channel_factory(incoming_bound)
         )
     }
 

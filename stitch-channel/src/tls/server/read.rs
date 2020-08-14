@@ -2,7 +2,7 @@ use async_std::io::*;
 use async_std::net::*;
 use async_std::task;
 use async_tls::{TlsAcceptor, server::TlsStream};
-use async_channel::{Receiver, Sender, unbounded, bounded};
+use async_channel::{Receiver, Sender};
 use futures_util::io::{AsyncReadExt, ReadHalf};
 
 pub struct ReadOnlyTlsServerChannel<T>
@@ -14,24 +14,18 @@ where T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'
 impl<T> ReadOnlyTlsServerChannel<T>
 where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
     pub fn unbounded(stream: TcpStream, acceptor: TlsAcceptor) -> Result<Self> {
-        Self::from_parts(stream, acceptor, unbounded())
+        Self::from_parts(stream, acceptor, None)
     }
 
     pub fn bounded(stream: TcpStream, acceptor: TlsAcceptor, incoming_bound: Option<usize>) -> Result<Self> {
-        let incoming_chan = if let Some(bound) = incoming_bound {
-            bounded(bound)
-        } else {
-            unbounded()
-        };
-
-        Self::from_parts(stream, acceptor, incoming_chan)
+        Self::from_parts(stream, acceptor, incoming_bound)
     }
 
-    pub fn from_parts(stream: TcpStream, acceptor: TlsAcceptor, incoming_chan: (Sender<T>, Receiver<T>)) -> Result<Self> {
+    pub fn from_parts(stream: TcpStream, acceptor: TlsAcceptor, incoming_bound: Option<usize>) -> Result<Self> {
         let encrypted_stream = task::block_on( acceptor.accept(stream))?;
         let (read_stream, _) = encrypted_stream.split();
 
-        Self::from_raw_parts(read_stream, incoming_chan)
+        Self::from_raw_parts(read_stream, crate::channel_factory(incoming_bound))
     }
 
     pub fn from_raw_parts(stream: ReadHalf<TlsStream<TcpStream>>, chan: (Sender<T>, Receiver<T>)) -> Result<Self> {
@@ -39,7 +33,7 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
 
         Ok(ReadOnlyTlsServerChannel {
             rx_chan: chan,
-            task:    task::spawn(crate::tls::server::read_from_stream(stream, sender))
+            task:    task::spawn(crate::read_from_stream(stream, sender))
         })
     }
 

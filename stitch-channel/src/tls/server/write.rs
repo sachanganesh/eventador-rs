@@ -2,7 +2,7 @@ use async_std::io::*;
 use async_std::net::*;
 use async_std::task;
 use async_tls::{TlsAcceptor, server::TlsStream};
-use async_channel::{Receiver, Sender, unbounded, bounded};
+use async_channel::{Receiver, Sender};
 use futures_util::io::{AsyncReadExt, WriteHalf};
 
 pub struct WriteOnlyTlsServerChannel<T>
@@ -14,25 +14,19 @@ where T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'
 impl<T> WriteOnlyTlsServerChannel<T>
 where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
     pub fn unbounded(stream: TcpStream, acceptor: TlsAcceptor) -> Result<Self> {
-        Self::from_parts(stream, acceptor, unbounded())
+        Self::from_parts(stream, acceptor, None)
     }
 
     pub fn bounded(stream: TcpStream, acceptor: TlsAcceptor, outgoing_bound: Option<usize>) -> Result<Self> {
-        let outgoing_chan = if let Some(bound) = outgoing_bound {
-            bounded(bound)
-        } else {
-            unbounded()
-        };
-
-        Self::from_parts(stream, acceptor, outgoing_chan)
+        Self::from_parts(stream, acceptor, outgoing_bound)
     }
 
-    pub fn from_parts(stream: TcpStream, acceptor: TlsAcceptor, outgoing_chan: (Sender<T>, Receiver<T>)) -> Result<Self> {
+    pub fn from_parts(stream: TcpStream, acceptor: TlsAcceptor, outgoing_bound: Option<usize>) -> Result<Self> {
         stream.set_nodelay(true)?;
         let encrypted_stream = task::block_on( acceptor.accept(stream))?;
         let (_, write_stream) = encrypted_stream.split();
 
-        Self::from_raw_parts(write_stream, outgoing_chan)
+        Self::from_raw_parts(write_stream, crate::channel_factory(outgoing_bound))
     }
 
     pub(crate) fn from_raw_parts(stream: WriteHalf<TlsStream<TcpStream>>, chan: (Sender<T>, Receiver<T>)) -> Result<Self> {
@@ -40,7 +34,7 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
 
         Ok(WriteOnlyTlsServerChannel {
             tx_chan: chan,
-            task:    task::spawn(crate::tls::server::write_to_stream(receiver, stream))
+            task:    task::spawn(crate::write_to_stream(receiver, stream))
         })
     }
 

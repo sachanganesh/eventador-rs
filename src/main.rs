@@ -1,12 +1,11 @@
 use async_std::{task, io};
 use async_channel::{Receiver, Sender};
-use std::{io::BufReader, fs::File, time::Duration};
+use std::{io::BufReader, fs::File};
 use uuid::Uuid;
 
 use stitch_channel::tcp::{BiDirectionalTcpChannel as TcpChannel, server::TcpServer};
-use stitch_channel::tls::{BiDirectionalTlsChannel as TlsChannel, TlsServer, async_tls::{TlsAcceptor, TlsConnector}, rustls::{ClientConfig, ServerConfig, NoClientAuth}};
+use stitch_channel::tls::{BiDirectionalTlsChannel as TlsChannel, TlsServer, rustls::{ClientConfig, ServerConfig, NoClientAuth}};
 use stitch_channel::tls::rustls::internal::pemfile::{certs, rsa_private_keys};
-use std::fmt::Error;
 
 #[macro_use] extern crate log;
 
@@ -18,8 +17,8 @@ const IP_ADDR: &str = "localhost:5678";
 async fn main() -> Result<(), anyhow::Error> {
     env_logger::init();
 
-    // let dist_chan = test_tcp()?;
-    let dist_chan = test_tls()?;
+    let dist_chan = test_tcp()?;
+    // let dist_chan = test_tls()?;
 
     let (sender, receiver): (Sender<String>, Receiver<String>) = dist_chan.channel();
 
@@ -68,8 +67,7 @@ fn test_tls() -> Result<TlsChannel<String>, anyhow::Error> {
         .add_pem_file(&mut client_pem)
         .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid cert"))
         .expect("it works");
-    let connector: TlsConnector = client_config.into();
-    match TlsChannel::unbounded(IP_ADDR, DOMAIN, connector) {
+    match TlsChannel::unbounded(IP_ADDR, DOMAIN, client_config.into()) {
         Ok(data) => Ok(data),
         Err(err) => {
             error!("{}", err);
