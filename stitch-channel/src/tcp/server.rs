@@ -1,27 +1,30 @@
 use crate::tcp::BiDirectionalTcpChannel;
 
+use async_channel::{bounded, unbounded, Receiver, Sender};
 use async_std::io::*;
-use async_std::prelude::*;
 use async_std::net::*;
+use async_std::prelude::*;
 use async_std::task;
-use async_channel::{Receiver, Sender, unbounded, bounded};
 use log::*;
 use std::borrow::BorrowMut;
 
-
 pub struct TcpServer {
-    accept_loop_task: task::JoinHandle<Result<()>>
+    accept_loop_task: task::JoinHandle<Result<()>>,
 }
 
 impl TcpServer {
-    pub fn unbounded
-    <
+    pub fn unbounded<
         A: ToSocketAddrs,
         T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
         F: 'static + Send + async_std::future::Future,
-        H: 'static + Send + FnMut((Sender<T>, Receiver<T>)) -> F
-    >(ip_addrs: A, mut connection_handler: H) -> Result<Self>
-    where <F as std::future::Future>::Output: std::marker::Send {
+        H: 'static + Send + FnMut((Sender<T>, Receiver<T>)) -> F,
+    >(
+        ip_addrs: A,
+        mut connection_handler: H,
+    ) -> Result<Self>
+    where
+        <F as std::future::Future>::Output: std::marker::Send,
+    {
         let listener = task::block_on(TcpListener::bind(ip_addrs))?;
 
         let handler = task::spawn(async move {
@@ -34,26 +37,36 @@ impl TcpServer {
                     Some(Ok(write_stream)) => {
                         let addr = write_stream.peer_addr()?;
                         let read_stream = write_stream.clone();
-                        match BiDirectionalTcpChannel::from_raw_parts((read_stream, write_stream),unbounded(), unbounded()) {
+                        match BiDirectionalTcpChannel::from_raw_parts(
+                            (read_stream, write_stream),
+                            unbounded(),
+                            unbounded(),
+                        ) {
                             Ok(dist_chan) => {
-                                info!("Accepted a connection from {} and passing to handler fn", addr);
+                                info!(
+                                    "Accepted a connection from {} and passing to handler fn",
+                                    addr
+                                );
                                 task::spawn(connection_handler(dist_chan.channel()));
-                            },
+                            }
 
-                            Err(err) => error!("Encountered error when creating TCP channel: {:#?}", err)
+                            Err(err) => {
+                                error!("Encountered error when creating TCP channel: {:#?}", err)
+                            }
                         }
-                    },
+                    }
 
-                    Some(Err(err)) => {
-                        error!("Encountered error when accepting TCP connection: {:#?}", err)
-                    },
-                    None => unreachable!()
+                    Some(Err(err)) => error!(
+                        "Encountered error when accepting TCP connection: {:#?}",
+                        err
+                    ),
+                    None => unreachable!(),
                 }
             }
         });
 
         Ok(TcpServer {
-            accept_loop_task: handler
+            accept_loop_task: handler,
         })
     }
 

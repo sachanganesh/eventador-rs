@@ -1,13 +1,17 @@
-use async_std::{task, io};
 use async_channel::{Receiver, Sender};
-use std::{io::BufReader, fs::File};
+use async_std::{io, task};
+use std::{fs::File, io::BufReader};
 use uuid::Uuid;
 
-use stitch_channel::tcp::{BiDirectionalTcpChannel as TcpChannel, server::TcpServer};
-use stitch_channel::tls::{BiDirectionalTlsChannel as TlsChannel, TlsServer, rustls::{ClientConfig, ServerConfig, NoClientAuth}};
+use stitch_channel::tcp::{server::TcpServer, BiDirectionalTcpChannel as TcpChannel};
 use stitch_channel::tls::rustls::internal::pemfile::{certs, rsa_private_keys};
+use stitch_channel::tls::{
+    rustls::{ClientConfig, NoClientAuth, ServerConfig},
+    BiDirectionalTlsChannel as TlsChannel, TlsServer,
+};
 
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
 const MAX_MESSAGES: usize = 150;
 const DOMAIN: &str = "localhost";
@@ -49,18 +53,20 @@ fn test_tls() -> Result<TlsChannel<String>, anyhow::Error> {
     let cert_path = "/home/svganesh/Documents/tools/echo-server/async-tls/tests/end.cert";
     let key_path = "/home/svganesh/Documents/tools/echo-server/async-tls/tests/end.rsa";
     let certs = certs(&mut BufReader::new(File::open(cert_path)?))
-                .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid cert"))?;
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid cert"))?;
     let mut keys = rsa_private_keys(&mut BufReader::new(File::open(key_path)?))
-               .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid key"))?;
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid key"))?;
     config
         .set_single_cert(certs, keys.remove(0))
         .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err))?;
     let acceptor = config.into();
-    let echo_server = TlsServer::unbounded(IP_ADDR, acceptor,handle_connections).expect("it works");
-
+    let echo_server =
+        TlsServer::unbounded(IP_ADDR, acceptor, handle_connections).expect("it works");
 
     let mut client_config = ClientConfig::new();
-    let client_file = std::fs::read("/home/svganesh/Documents/tools/echo-server/async-tls/tests/end.chain").unwrap();
+    let client_file =
+        std::fs::read("/home/svganesh/Documents/tools/echo-server/async-tls/tests/end.chain")
+            .unwrap();
     let mut client_pem = std::io::Cursor::new(client_file);
     client_config
         .root_store
@@ -78,7 +84,8 @@ fn test_tls() -> Result<TlsChannel<String>, anyhow::Error> {
 
 async fn async_read(receiver: Receiver<String>) {
     let mut i: usize = 0;
-    loop { // for i in 0..MAX_MESSAGES + 1 {
+    loop {
+        // for i in 0..MAX_MESSAGES + 1 {
         if let Ok(data) = receiver.recv().await {
             info!("Received #{}: {}", i, data);
             i += 1;

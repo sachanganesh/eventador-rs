@@ -1,16 +1,20 @@
+use async_channel::{Receiver, Sender};
 use async_std::io::*;
 use async_std::net::*;
 use async_std::task;
-use async_channel::{Receiver, Sender};
 
 pub struct WriteOnlyTcpChannel<T>
-where T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
+where
+    T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
+{
     pub(crate) tx_chan: (Sender<T>, Receiver<T>),
-    pub(crate) task:  task::JoinHandle<anyhow::Result<()>>
+    pub(crate) task: task::JoinHandle<anyhow::Result<()>>,
 }
 
 impl<T> WriteOnlyTcpChannel<T>
-where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
+where
+    T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
+{
     pub fn unbounded<A: ToSocketAddrs>(ip_addrs: A) -> Result<Self> {
         Self::from_parts(ip_addrs, None)
     }
@@ -19,7 +23,10 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
         Self::from_parts(ip_addrs, outgoing_bound)
     }
 
-    pub fn from_parts<A: ToSocketAddrs>(ip_addrs: A, outgoing_bound: Option<usize>) -> Result<Self> {
+    pub fn from_parts<A: ToSocketAddrs>(
+        ip_addrs: A,
+        outgoing_bound: Option<usize>,
+    ) -> Result<Self> {
         let write_stream = task::block_on(TcpStream::connect(ip_addrs))?;
         write_stream.set_nodelay(true)?;
 
@@ -31,7 +38,7 @@ where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Des
 
         Ok(WriteOnlyTcpChannel {
             tx_chan: chan,
-            task:    task::spawn(crate::write_to_stream(receiver, stream))
+            task: task::spawn(crate::write_to_stream(receiver, stream)),
         })
     }
 

@@ -1,22 +1,22 @@
 pub mod tcp;
 pub mod tls;
 
-
-use std::io::Cursor;
-use async_channel::{Receiver, Sender, bounded, unbounded};
+use async_channel::{bounded, unbounded, Receiver, Sender};
 use async_std::prelude::*;
 use bytes::{Buf, BytesMut};
 use futures_util::io::{AsyncRead, AsyncWrite};
 use log::*;
-use rmp_serde::{encode, decode};
+use rmp_serde::{decode, encode};
 use serde::Deserialize;
-
+use std::io::Cursor;
 
 const BUFFER_SIZE: usize = 8192;
 
 pub(crate) async fn read_from_stream<R, T>(mut input: R, output: Sender<T>) -> anyhow::Result<()>
-    where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
-          R: AsyncRead + std::marker::Unpin {
+where
+    T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
+    R: AsyncRead + std::marker::Unpin,
+{
     use std::convert::TryInto;
 
     let mut buffer = BytesMut::new();
@@ -58,9 +58,9 @@ pub(crate) async fn read_from_stream<R, T>(mut input: R, output: Sender<T>) -> a
                             debug!("Sending deserialized data to channel");
                             if let Err(err) = output.send(data).await {
                                 error!("Encountered error while sending data to channel from TCP stream: {:#?}", err);
-                                return Err(anyhow::Error::from(err))
+                                return Err(anyhow::Error::from(err));
                             }
-                        },
+                        }
 
                         Err(err) => {
                             error!("Encountered error while deserializing data from TCP connection: {:#?}", err);
@@ -72,16 +72,18 @@ pub(crate) async fn read_from_stream<R, T>(mut input: R, output: Sender<T>) -> a
                 }
 
                 buffer.resize(BUFFER_SIZE, 0);
-            },
+            }
 
-            Err(err) => return Err(anyhow::Error::from(err))
+            Err(err) => return Err(anyhow::Error::from(err)),
         }
     }
 }
 
 pub(crate) async fn write_to_stream<T, W>(input: Receiver<T>, mut output: W) -> anyhow::Result<()>
-    where T: 'static + Send + Sync + serde::ser::Serialize,
-          W: AsyncWrite + std::marker::Unpin {
+where
+    T: 'static + Send + Sync + serde::ser::Serialize,
+    W: AsyncWrite + std::marker::Unpin,
+{
     debug!("Starting write loop for TCP connection");
     loop {
         trace!("Waiting for writable data that will be sent to the stream");
@@ -92,31 +94,31 @@ pub(crate) async fn write_to_stream<T, W>(input: Receiver<T>, mut output: W) -> 
                 let mut serializer = encode::Serializer::new(&mut buffer);
 
                 match msg.serialize(&mut serializer) {
-                    Ok(_) => {
-                        match output.write_all(buffer.as_slice()).await {
-                            Ok(_) => {
-                                debug!("Wrote {:?} as {} bytes to TCP stream", buffer, buffer.len());
-                                output.flush().await?;
-                            },
-
-                            Err(err) => {
-                                error!("Could not write data to TCP stream: {}", err)
-                            }
+                    Ok(_) => match output.write_all(buffer.as_slice()).await {
+                        Ok(_) => {
+                            debug!("Wrote {:?} as {} bytes to TCP stream", buffer, buffer.len());
+                            output.flush().await?;
                         }
+
+                        Err(err) => error!("Could not write data to TCP stream: {}", err),
                     },
 
                     Err(err) => {
                         error!("Could not serialize message: {}", err);
                     }
                 }
-            },
+            }
 
-            Err(err) => return Err(anyhow::Error::from(err))
+            Err(err) => return Err(anyhow::Error::from(err)),
         }
     }
 }
 
-pub(crate) fn channel_factory<T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>>(mut bound: Option<usize>) -> (Sender<T>, Receiver<T>) {
+pub(crate) fn channel_factory<
+    T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
+>(
+    mut bound: Option<usize>,
+) -> (Sender<T>, Receiver<T>) {
     if let Some(bound) = bound.take() {
         bounded(bound)
     } else {

@@ -1,44 +1,57 @@
+use async_channel::{Receiver, Sender};
 use async_std::io::*;
 use async_std::net::*;
 use async_std::task;
-use async_channel::{Receiver, Sender};
 
 use crate::tcp::{read, write};
 
 pub struct BiDirectionalTcpChannel<T>
-    where T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
+where
+    T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
+{
     reader: read::ReadOnlyTcpChannel<T>,
-    writer: write::WriteOnlyTcpChannel<T>
+    writer: write::WriteOnlyTcpChannel<T>,
 }
 
 impl<T> BiDirectionalTcpChannel<T>
-where T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de> {
+where
+    T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
+{
     pub fn unbounded<A: ToSocketAddrs>(ip_addrs: A) -> Result<Self> {
         Self::from_parts(ip_addrs, None, None)
     }
 
-    pub fn bounded<A: ToSocketAddrs>(ip_addrs: A, outgoing_bound: Option<usize>, incoming_bound: Option<usize>) -> Result<Self> {
+    pub fn bounded<A: ToSocketAddrs>(
+        ip_addrs: A,
+        outgoing_bound: Option<usize>,
+        incoming_bound: Option<usize>,
+    ) -> Result<Self> {
         Self::from_parts(ip_addrs, outgoing_bound, incoming_bound)
     }
 
-    pub fn from_parts<A: ToSocketAddrs>(ip_addrs: A, outgoing_bound: Option<usize>, incoming_bound: Option<usize>) -> Result<Self> {
-        let read_stream  = task::block_on(TcpStream::connect(ip_addrs))?;
+    pub fn from_parts<A: ToSocketAddrs>(
+        ip_addrs: A,
+        outgoing_bound: Option<usize>,
+        incoming_bound: Option<usize>,
+    ) -> Result<Self> {
+        let read_stream = task::block_on(TcpStream::connect(ip_addrs))?;
         let write_stream = read_stream.clone();
 
         Self::from_raw_parts(
             (read_stream, write_stream),
             crate::channel_factory(outgoing_bound),
-            crate::channel_factory(incoming_bound)
+            crate::channel_factory(incoming_bound),
         )
     }
 
-    pub(crate) fn from_raw_parts((read_stream, write_stream): (TcpStream, TcpStream),
-                                 outgoing_chan: (Sender<T>, Receiver<T>),
-                                 incoming_chan: (Sender<T>, Receiver<T>),
+    pub(crate) fn from_raw_parts(
+        (read_stream, write_stream): (TcpStream, TcpStream),
+        outgoing_chan: (Sender<T>, Receiver<T>),
+        incoming_chan: (Sender<T>, Receiver<T>),
     ) -> Result<Self> {
         Ok(BiDirectionalTcpChannel {
             reader: read::ReadOnlyTcpChannel::from_raw_parts(read_stream, incoming_chan)?,
-            writer: write::WriteOnlyTcpChannel::from_raw_parts(write_stream, outgoing_chan)?
+            writer: write::WriteOnlyTcpChannel::from_raw_parts(write_stream, outgoing_chan)?,
         })
     }
 
