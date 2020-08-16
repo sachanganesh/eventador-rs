@@ -2,6 +2,7 @@ use async_channel::{Receiver, Sender};
 use async_std::io::*;
 use async_std::net::*;
 use async_std::task;
+use log::info;
 
 use crate::tcp::{read, write};
 
@@ -17,11 +18,11 @@ impl<T> BiDirectionalTcpChannel<T>
 where
     T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
 {
-    pub fn unbounded<A: ToSocketAddrs>(ip_addrs: A) -> Result<Self> {
+    pub fn unbounded<A: ToSocketAddrs + std::fmt::Display>(ip_addrs: A) -> Result<Self> {
         Self::from_parts(ip_addrs, None, None)
     }
 
-    pub fn bounded<A: ToSocketAddrs>(
+    pub fn bounded<A: ToSocketAddrs + std::fmt::Display>(
         ip_addrs: A,
         outgoing_bound: Option<usize>,
         incoming_bound: Option<usize>,
@@ -29,11 +30,12 @@ where
         Self::from_parts(ip_addrs, outgoing_bound, incoming_bound)
     }
 
-    pub fn from_parts<A: ToSocketAddrs>(
+    pub fn from_parts<A: ToSocketAddrs + std::fmt::Display>(
         ip_addrs: A,
         outgoing_bound: Option<usize>,
         incoming_bound: Option<usize>,
     ) -> Result<Self> {
+        info!("Creating client TCP connection to {}", ip_addrs);
         let read_stream = task::block_on(TcpStream::connect(ip_addrs))?;
         let write_stream = read_stream.clone();
 

@@ -14,7 +14,7 @@ pub struct TcpServer {
 
 impl TcpServer {
     pub fn unbounded<
-        A: ToSocketAddrs,
+        A: ToSocketAddrs + std::fmt::Display,
         T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
         F: 'static + Send + async_std::future::Future,
         H: 'static + Send + FnMut((Sender<T>, Receiver<T>)) -> F,
@@ -25,6 +25,7 @@ impl TcpServer {
     where
         <F as std::future::Future>::Output: std::marker::Send,
     {
+        info!("Starting TCP server at {}", ip_addrs);
         let listener = task::block_on(TcpListener::bind(ip_addrs))?;
 
         let handler = task::spawn(async move {

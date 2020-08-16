@@ -1,7 +1,9 @@
 pub mod tcp;
 pub mod tls;
 
-use async_channel::{bounded, unbounded, Receiver, Sender};
+pub use async_channel::{Sender, Receiver};
+
+use async_channel::{bounded, unbounded};
 use async_std::prelude::*;
 use bytes::{Buf, BytesMut};
 use futures_util::io::{AsyncRead, AsyncWrite};

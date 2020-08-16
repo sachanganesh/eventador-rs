@@ -729,6 +729,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "tcp-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-std",
+ "env_logger",
+ "log",
+ "stitch-channel",
+]
+
+[[package]]
+name = "tcp-echo-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "env_logger",
+ "log",
+ "stitch-channel",
+]
+
+[[package]]
 name = "termcolor"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

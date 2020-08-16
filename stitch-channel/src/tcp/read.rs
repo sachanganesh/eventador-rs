@@ -2,6 +2,7 @@ use async_channel::{Receiver, Sender};
 use async_std::io::*;
 use async_std::net::*;
 use async_std::task;
+use log::info;
 
 pub struct ReadOnlyTcpChannel<T>
 where
@@ -15,18 +16,19 @@ impl<T> ReadOnlyTcpChannel<T>
 where
     T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
 {
-    pub fn unbounded<A: ToSocketAddrs>(ip_addrs: A) -> Result<Self> {
+    pub fn unbounded<A: ToSocketAddrs + std::fmt::Display>(ip_addrs: A) -> Result<Self> {
         Self::from_parts(ip_addrs, None)
     }
 
-    pub fn bounded<A: ToSocketAddrs>(ip_addrs: A, incoming_bound: Option<usize>) -> Result<Self> {
+    pub fn bounded<A: ToSocketAddrs + std::fmt::Display>(ip_addrs: A, incoming_bound: Option<usize>) -> Result<Self> {
         Self::from_parts(ip_addrs, incoming_bound)
     }
 
-    pub fn from_parts<A: ToSocketAddrs>(
+    pub fn from_parts<A: ToSocketAddrs + std::fmt::Display>(
         ip_addrs: A,
         incoming_bound: Option<usize>,
     ) -> Result<Self> {
+        info!("Creating client TCP connection to {}", ip_addrs);
         let read_stream = task::block_on(TcpStream::connect(ip_addrs))?;
 
         Self::from_raw_parts(read_stream, crate::channel_factory(incoming_bound))
