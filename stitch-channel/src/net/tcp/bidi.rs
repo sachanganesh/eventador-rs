@@ -8,6 +8,7 @@ use log::*;
 use crate::net::registry::{StitchRegistry, StitchRegistryEntry, StitchRegistryKey};
 use crate::{channel_factory, StitchMessage};
 use async_std::sync::RwLock;
+use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -15,7 +16,7 @@ pub struct BidirectionalTcpAgent {
     registry: StitchRegistry,
     read_task: task::JoinHandle<anyhow::Result<()>>,
     write_task: task::JoinHandle<anyhow::Result<()>>,
-    stitch_chan: (Sender<StitchMessage>, Receiver<StitchMessage>),
+    stream_writer_chan: (Sender<StitchMessage>, Receiver<StitchMessage>),
 }
 
 impl BidirectionalTcpAgent {
@@ -41,12 +42,15 @@ impl BidirectionalTcpAgent {
             registry,
             read_task,
             write_task,
-            stitch_chan: (sender, receiver),
+            stream_writer_chan: (sender, receiver),
         })
     }
 
-    pub fn stitch_chan(&self) -> (Sender<StitchMessage>, Receiver<StitchMessage>) {
-        (self.stitch_chan.0.clone(), self.stitch_chan.1.clone())
+    pub fn stream_writer_chan(&self) -> (Sender<StitchMessage>, Receiver<StitchMessage>) {
+        (
+            self.stream_writer_chan.0.clone(),
+            self.stream_writer_chan.1.clone(),
+        )
     }
 
     pub fn read_task(&self) -> &task::JoinHandle<anyhow::Result<()>> {
@@ -58,8 +62,8 @@ impl BidirectionalTcpAgent {
     }
 
     pub fn close(self) {
-        self.stitch_chan.0.close();
-        self.stitch_chan.1.close();
+        self.stream_writer_chan.0.close();
+        self.stream_writer_chan.1.close();
     }
 
     pub fn unbounded<
@@ -67,27 +71,38 @@ impl BidirectionalTcpAgent {
     >(
         &mut self,
     ) -> (Sender<Box<T>>, Receiver<Box<T>>) {
-        let (stitch_sender, stitch_receiver) = self.stitch_chan();
-
         let tid_hash: StitchRegistryKey = StitchMessage::hash_type::<T>();
 
-        let (se_sender, se_receiver) = unbounded();
-        let (de_sender, de_receiver) = unbounded();
+        let (serializer_sender, serializer_receiver) = unbounded::<Box<T>>();
+        let (stream_writer_sender, _) = self.stream_writer_chan();
+
+        let (deserializer_sender, deserializer_receiver) = unbounded::<StitchMessage>();
+        let (user_sender, user_receiver) = unbounded::<Box<T>>();
 
         let mut writable_registry = task::block_on(self.registry.write());
-        debug!("Acquired write lock for registry");
+        debug!(
+            "Acquired write lock for registry and inserting entry for key {}",
+            tid_hash
+        );
 
         writable_registry.insert(
             tid_hash,
             Arc::new(StitchRegistryEntry::new(
-                (se_sender.clone(), se_receiver.clone()),
-                (de_sender.clone(), de_receiver.clone()),
-                task::spawn(crate::net::serialize(se_receiver, stitch_sender.clone())),
-                task::spawn(crate::net::deserialize(stitch_receiver.clone(), de_sender)),
+                (serializer_sender.clone(), serializer_receiver.clone()),
+                (deserializer_sender.clone(), deserializer_receiver.clone()),
+                (user_sender.clone(), user_receiver.clone()),
+                task::spawn(crate::net::serialize::<T>(
+                    serializer_receiver,
+                    stream_writer_sender,
+                )),
+                task::spawn(crate::net::deserialize::<T>(
+                    deserializer_receiver,
+                    user_sender,
+                )),
             )),
         );
 
         debug!("Releasing write lock for registry");
-        return (se_sender, de_receiver);
+        return (serializer_sender, user_receiver);
     }
 }

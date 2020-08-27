@@ -13,7 +13,7 @@ use stitch_channel::net::tcp::BidirectionalTcpAgent as TcpChannel;
 #[macro_use]
 extern crate log;
 
-const MAX_MESSAGES: usize = 1;
+const MAX_MESSAGES: usize = 150;
 const DOMAIN: &str = "localhost";
 const IP_ADDR: &str = "localhost:5678";
 

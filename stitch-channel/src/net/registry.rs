@@ -9,86 +9,99 @@ pub(crate) type StitchRegistry = Arc<RwLock<HashMap<StitchRegistryKey, Arc<Stitc
 
 pub(crate) type StitchRegistryKey = u64;
 
+type GenericField = Box<dyn Any + Send + Sync>;
 pub(crate) struct StitchRegistryEntry {
-    serialize_sender: Box<dyn Any + Send + Sync>,
-    serialize_receiver: Box<dyn Any + Send + Sync>,
-    deserialize_sender: Box<dyn Any + Send + Sync>,
-    deserialize_receiver: Box<dyn Any + Send + Sync>,
-    serialize_task: task::JoinHandle<Result<(), anyhow::Error>>,
-    deserialize_task: task::JoinHandle<Result<(), anyhow::Error>>,
+    serializer_sender: GenericField,
+    serializer_receiver: GenericField,
+
+    deserializer_sender: Sender<StitchMessage>,
+    deserializer_receiver: Receiver<StitchMessage>,
+
+    user_sender: GenericField,
+    user_receiver: GenericField,
+
+    serializer_task: task::JoinHandle<Result<(), anyhow::Error>>,
+    deserializer_task: task::JoinHandle<Result<(), anyhow::Error>>,
 }
 
 impl StitchRegistryEntry {
     pub fn new<T: 'static + Send + Sync>(
-        serialize_chan: (Sender<T>, Receiver<T>),
-        deserialize_chan: (Sender<T>, Receiver<T>),
-        serialize_task: JoinHandle<Result<(), anyhow::Error>>,
-        deserialize_task: JoinHandle<Result<(), anyhow::Error>>,
+        serializer_chan: (Sender<Box<T>>, Receiver<Box<T>>),
+        deserializer_chan: (Sender<StitchMessage>, Receiver<StitchMessage>),
+        user_chan: (Sender<Box<T>>, Receiver<Box<T>>),
+
+        serializer_task: JoinHandle<Result<(), anyhow::Error>>,
+        deserializer_task: JoinHandle<Result<(), anyhow::Error>>,
     ) -> StitchRegistryEntry {
         StitchRegistryEntry {
-            serialize_sender: Box::new(serialize_chan.0),
-            serialize_receiver: Box::new(serialize_chan.1),
-            deserialize_sender: Box::new(deserialize_chan.0),
-            deserialize_receiver: Box::new(deserialize_chan.1),
-            serialize_task,
-            deserialize_task,
+            serializer_sender: Box::new(serializer_chan.0),
+            serializer_receiver: Box::new(serializer_chan.1),
+
+            deserializer_sender: deserializer_chan.0,
+            deserializer_receiver: deserializer_chan.1,
+
+            user_sender: Box::new(user_chan.0),
+            user_receiver: Box::new(user_chan.1),
+
+            serializer_task,
+            deserializer_task,
         }
     }
 
-    fn downcast_sender<T: 'static + Send + Sync>(
-        downcastable_sender: &Box<dyn Any + Send + Sync>,
-    ) -> Result<Sender<T>, anyhow::Error> {
-        if let Some(sender) = downcastable_sender.downcast_ref::<Sender<T>>() {
-            return Ok(sender.clone());
-        }
+    // fn downcast_sender<T: 'static + Send + Sync>(
+    //     downcastable_sender: &Sender<Box<dyn Any + Send + Sync>>,
+    // ) -> Result<Sender<T>, anyhow::Error> {
+    //     if let Some(sender) = downcastable_sender.downcast_ref::<Sender<Box<T>>>() {
+    //         return Ok(sender.clone());
+    //     }
+    //
+    //     Err(anyhow::Error::msg(
+    //         "could not downcast sender based on type parameter",
+    //     ))
+    // }
 
-        Err(anyhow::Error::msg(
-            "could not downcast based on implicit type parameter",
-        ))
+    // fn downcast_receiver<T: 'static + Send + Sync>(
+    //     downcastable_receiver: &Box<dyn Any + Send + Sync>,
+    // ) -> Result<Receiver<T>, anyhow::Error> {
+    //     if let Some(receiver) = downcastable_receiver.downcast_ref::<Receiver<T>>() {
+    //         return Ok(receiver.clone());
+    //     }
+    //
+    //     Err(anyhow::Error::msg(
+    //         "could not downcast receiver based on type parameter",
+    //     ))
+    // }
+    //
+    // pub fn serialize_sender<T: 'static + Send + Sync>(&self) -> Result<Sender<Box<T>>, anyhow::Error> {
+    //     Self::downcast_sender(&self.serialize_sender)
+    // }
+    //
+    // pub fn serialize_receiver<T: 'static + Send + Sync>(
+    //     &self,
+    // ) -> Result<Receiver<T>, anyhow::Error> {
+    //     Self::downcast_receiver(&self.serialize_receiver)
+    // }
+    //
+    pub fn deserializer_sender(&self) -> Sender<StitchMessage> {
+        self.deserializer_sender.clone()
     }
-
-    fn downcast_receiver<T: 'static + Send + Sync>(
-        downcastable_receiver: &Box<dyn Any + Send + Sync>,
-    ) -> Result<Receiver<T>, anyhow::Error> {
-        if let Some(receiver) = downcastable_receiver.downcast_ref::<Receiver<T>>() {
-            return Ok(receiver.clone());
-        }
-
-        Err(anyhow::Error::msg(
-            "could not downcast based on implicit type parameter",
-        ))
-    }
-
-    pub fn serialize_sender<T: 'static + Send + Sync>(&self) -> Result<Sender<T>, anyhow::Error> {
-        Self::downcast_sender(&self.serialize_sender)
-    }
-
-    pub fn serialize_receiver<T: 'static + Send + Sync>(
-        &self,
-    ) -> Result<Receiver<T>, anyhow::Error> {
-        Self::downcast_receiver(&self.serialize_receiver)
-    }
-
-    pub fn deserialize_sender<T: 'static + Send + Sync>(&self) -> Result<Sender<T>, anyhow::Error> {
-        Self::downcast_sender(&self.deserialize_sender)
-    }
-
-    pub fn deserialize_receiver<T: 'static + Send + Sync>(
-        &self,
-    ) -> Result<Receiver<T>, anyhow::Error> {
-        Self::downcast_receiver(&self.deserialize_receiver)
-    }
-
-    pub fn external_chan<T: 'static + Send + Sync>(
-        &self,
-    ) -> Result<(Sender<Box<T>>, Receiver<Box<T>>), anyhow::Error> {
-        match self.serialize_sender() {
-            Ok(sender) => match self.deserialize_receiver() {
-                Ok(receiver) => Ok((sender, receiver)),
-                Err(err) => Err(err),
-            },
-
-            Err(err) => Err(err),
-        }
-    }
+    //
+    // pub fn deserialize_receiver<T: 'static + Send + Sync>(
+    //     &self,
+    // ) -> Result<Receiver<T>, anyhow::Error> {
+    //     Self::downcast_receiver(&self.deserialize_receiver)
+    // }
+    //
+    // pub fn external_chan<T: 'static + Send + Sync>(
+    //     &self,
+    // ) -> Result<(Sender<Box<T>>, Receiver<Box<T>>), anyhow::Error> {
+    //     match self.serialize_sender() {
+    //         Ok(sender) => match self.deserialize_receiver() {
+    //             Ok(receiver) => Ok((sender, receiver)),
+    //             Err(err) => Err(err),
+    //         },
+    //
+    //         Err(err) => Err(err),
+    //     }
+    // }
 }

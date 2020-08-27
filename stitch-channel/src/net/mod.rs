@@ -4,7 +4,7 @@ pub mod tcp;
 
 pub use async_channel::{Receiver, Sender};
 
-use crate::net::registry::StitchRegistry;
+use crate::net::registry::{StitchRegistry, StitchRegistryKey};
 use crate::StitchMessage;
 use async_std::prelude::*;
 use bytes::{Buf, BytesMut};
@@ -68,7 +68,7 @@ where
                                 bytes_read
                             );
 
-                            let tid: u64 = data.type_id;
+                            let tid: StitchRegistryKey = data.type_id;
 
                             let readable_registry = registry.read().await;
                             debug!("Acquired read lock for registry");
@@ -77,12 +77,11 @@ where
                                 Some(entry) => {
                                     debug!("Looked up registered channel for type id {}", tid);
 
-                                    let sender: Sender<Box<dyn Any + Send + Sync>> = entry
-                                        .deserialize_sender()
-                                        .expect("internal channel get call to work"); // @todo change to better error msg
+                                    let sender = entry.deserializer_sender();
+                                    // .expect("internal channel get call to work"); // @todo change to better error msg
 
                                     debug!("Sending deserialized data to channel");
-                                    if let Err(err) = sender.send(Box::new(data)).await {
+                                    if let Err(err) = sender.send(data).await {
                                         error!("Encountered error while sending data to channel from TCP stream: {:#?}", err);
                                         debug!("Releasing write lock for registry");
                                         return Err(anyhow::Error::from(err));
@@ -91,6 +90,10 @@ where
 
                                 // got an external message that has not yet been registered for internal consumption
                                 None => {
+                                    error!(
+                                        "Could not find entry for type id {} in the registry",
+                                        tid
+                                    );
                                     return Err(anyhow::Error::msg(format!(
                                         "failed to find channels of type id {} registered",
                                         tid
@@ -100,7 +103,7 @@ where
                         }
 
                         Err(err) => {
-                            error!("Encountered error while deserializing data from TCP connection: {:#?}", err);
+                            error!("Could not deserialize data from TCP connection: {:#?}", err);
                             pending = Some(buffer);
                             buffer = BytesMut::new();
                             break;
@@ -152,14 +155,13 @@ where
 }
 
 pub(crate) async fn serialize<T>(
-    input: Receiver<T>,
+    input: Receiver<Box<T>>,
     output: Sender<StitchMessage>,
 ) -> anyhow::Result<()>
 where
     T: 'static + Send + Sync + serde::ser::Serialize,
 {
-    let tid = StitchMessage::type_id::<T>();
-    let tid_hash = StitchMessage::hash_type_id(tid);
+    let tid_hash: StitchRegistryKey = StitchMessage::hash_type::<T>();
 
     debug!("Starting serialize loop for type ID {}", tid_hash);
     loop {
@@ -203,8 +205,7 @@ pub(crate) async fn deserialize<T: 'static>(
 where
     T: Send + Sync + for<'de> serde::de::Deserialize<'de>,
 {
-    let tid = StitchMessage::type_id::<T>();
-    let tid_hash = StitchMessage::hash_type_id(tid);
+    let tid_hash: StitchRegistryKey = StitchMessage::hash_type::<T>();
 
     debug!("Starting deserialize loop for type ID {}", tid_hash);
     loop {
