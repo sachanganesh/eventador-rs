@@ -7,9 +7,8 @@ use log::*;
 // use crate::net::{read, write};
 use crate::net::registry::{StitchRegistry, StitchRegistryEntry, StitchRegistryKey};
 use crate::{channel_factory, StitchMessage};
-use async_std::sync::RwLock;
+use dashmap::mapref::one::Ref;
 use std::any::Any;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 pub struct BidirectionalTcpAgent {
@@ -33,7 +32,7 @@ impl BidirectionalTcpAgent {
         let write_stream = read_stream.clone();
 
         let (sender, receiver) = channel_factory(cap);
-        let registry: StitchRegistry = Arc::new(RwLock::new(HashMap::new()));
+        let registry: StitchRegistry = crate::net::registry::new_stitch_registry();
 
         let read_task = task::spawn(crate::net::read_from_stream(registry.clone(), read_stream));
         let write_task = task::spawn(crate::net::write_to_stream(receiver.clone(), write_stream));
@@ -70,22 +69,16 @@ impl BidirectionalTcpAgent {
         T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
     >(
         &mut self,
-    ) -> (Sender<Box<T>>, Receiver<Box<T>>) {
+    ) -> (Sender<T>, Receiver<T>) {
         let tid_hash: StitchRegistryKey = StitchMessage::hash_type::<T>();
 
-        let (serializer_sender, serializer_receiver) = unbounded::<Box<T>>();
+        let (serializer_sender, serializer_receiver): (Sender<T>, Receiver<T>) = unbounded();
         let (stream_writer_sender, _) = self.stream_writer_chan();
 
         let (deserializer_sender, deserializer_receiver) = unbounded::<StitchMessage>();
-        let (user_sender, user_receiver) = unbounded::<Box<T>>();
+        let (user_sender, user_receiver): (Sender<T>, Receiver<T>) = unbounded();
 
-        let mut writable_registry = task::block_on(self.registry.write());
-        debug!(
-            "Acquired write lock for registry and inserting entry for key {}",
-            tid_hash
-        );
-
-        writable_registry.insert(
+        self.registry.insert(
             tid_hash,
             Arc::new(StitchRegistryEntry::new(
                 (serializer_sender.clone(), serializer_receiver.clone()),
@@ -102,7 +95,47 @@ impl BidirectionalTcpAgent {
             )),
         );
 
-        debug!("Releasing write lock for registry");
         return (serializer_sender, user_receiver);
     }
+
+    fn get_key_from_type<
+        T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
+    >(
+        &self,
+    ) -> StitchRegistryKey {
+        StitchMessage::hash_type::<T>()
+    }
+
+    pub fn channel_exists<
+        T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
+    >(
+        &self,
+    ) -> bool {
+        let key = self.get_key_from_type::<T>();
+        self.registry.contains_key(&key)
+    }
+
+    // pub fn get_channel<
+    //     T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
+    // >(
+    //     &self,
+    // ) -> Result<(Sender<Box<T>>, Receiver<Box<T>>), anyhow::Error> {
+    //     let key = self.get_key_from_type::<T>();
+    //
+    //     match self.registry.get(&key) {
+    //         Some(entry) => match entry.user_facing_chan() {
+    //             Ok(chan) => Ok(chan),
+    //             Err(err) => Err(err),
+    //         }
+    //
+    //         None => {
+    //             error!("Could not find entry for type id {} in the registry", key);
+    //
+    //             Err(anyhow::Error::msg(format!(
+    //                 "channel of type-id {} not registered",
+    //                 key
+    //             )))
+    //         }
+    //     }
+    // }
 }

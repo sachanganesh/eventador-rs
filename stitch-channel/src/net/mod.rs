@@ -13,7 +13,6 @@ use log::*;
 use rmp_serde::{decode, encode};
 use serde::Deserialize;
 use std::any::Any;
-use std::collections::HashMap;
 use std::io::Cursor;
 
 const BUFFER_SIZE: usize = 8192;
@@ -70,20 +69,14 @@ where
 
                             let tid: StitchRegistryKey = data.type_id;
 
-                            let readable_registry = registry.read().await;
-                            debug!("Acquired read lock for registry");
-
-                            match readable_registry.get(&tid) {
+                            match registry.get(&tid) {
                                 Some(entry) => {
                                     debug!("Looked up registered channel for type id {}", tid);
-
                                     let sender = entry.deserializer_sender();
-                                    // .expect("internal channel get call to work"); // @todo change to better error msg
 
                                     debug!("Sending deserialized data to channel");
                                     if let Err(err) = sender.send(data).await {
                                         error!("Encountered error while sending data to channel from TCP stream: {:#?}", err);
-                                        debug!("Releasing write lock for registry");
                                         return Err(anyhow::Error::from(err));
                                     }
                                 }
@@ -155,7 +148,7 @@ where
 }
 
 pub(crate) async fn serialize<T>(
-    input: Receiver<Box<T>>,
+    input: Receiver<T>,
     output: Sender<StitchMessage>,
 ) -> anyhow::Result<()>
 where
@@ -200,7 +193,7 @@ where
 
 pub(crate) async fn deserialize<T: 'static>(
     input: Receiver<StitchMessage>,
-    output: Sender<Box<T>>,
+    output: Sender<T>,
 ) -> anyhow::Result<()>
 where
     T: Send + Sync + for<'de> serde::de::Deserialize<'de>,
@@ -221,7 +214,7 @@ where
 
                 match Deserialize::deserialize(&mut decoder) {
                     Ok(data) => {
-                        if let Err(err) = output.send(Box::new(data)).await {
+                        if let Err(err) = output.send(data).await {
                             error!("Could not send {} message: {}", tid_hash, err);
                             return Err(anyhow::Error::from(err));
                         } else {
