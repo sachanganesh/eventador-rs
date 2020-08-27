@@ -4,21 +4,22 @@ use async_std::net::*;
 use async_std::task;
 use log::*;
 
-// use crate::net::{read, write};
 use crate::net::registry::{StitchRegistry, StitchRegistryEntry, StitchRegistryKey};
 use crate::{channel_factory, StitchMessage};
 use dashmap::mapref::one::Ref;
 use std::any::Any;
 use std::sync::Arc;
 
-pub struct BidirectionalTcpAgent {
+pub struct TcpClientAgent {
+    local_addr: Result<SocketAddr>,
+    peer_addr: Result<SocketAddr>,
     registry: StitchRegistry,
+    stream_writer_chan: (Sender<StitchMessage>, Receiver<StitchMessage>),
     read_task: task::JoinHandle<anyhow::Result<()>>,
     write_task: task::JoinHandle<anyhow::Result<()>>,
-    stream_writer_chan: (Sender<StitchMessage>, Receiver<StitchMessage>),
 }
 
-impl BidirectionalTcpAgent {
+impl TcpClientAgent {
     pub fn new<A: ToSocketAddrs + std::fmt::Display>(ip_addrs: A) -> Result<Self> {
         Self::with_bound(ip_addrs, None)
     }
@@ -34,10 +35,15 @@ impl BidirectionalTcpAgent {
         let (sender, receiver) = channel_factory(cap);
         let registry: StitchRegistry = crate::net::registry::new_stitch_registry();
 
+        let local_addr = read_stream.local_addr();
+        let peer_addr = read_stream.peer_addr();
+
         let read_task = task::spawn(crate::net::read_from_stream(registry.clone(), read_stream));
         let write_task = task::spawn(crate::net::write_to_stream(receiver.clone(), write_stream));
 
         Ok(Self {
+            local_addr,
+            peer_addr,
             registry,
             read_task,
             write_task,
@@ -45,11 +51,19 @@ impl BidirectionalTcpAgent {
         })
     }
 
-    pub fn stream_writer_chan(&self) -> (Sender<StitchMessage>, Receiver<StitchMessage>) {
+    pub(crate) fn stream_writer_chan(&self) -> (Sender<StitchMessage>, Receiver<StitchMessage>) {
         (
             self.stream_writer_chan.0.clone(),
             self.stream_writer_chan.1.clone(),
         )
+    }
+
+    pub fn local_addr(&self) -> Result<SocketAddr> {
+        self.local_addr.clone()
+    }
+
+    pub fn peer_addr(&self) -> Result<SocketAddr> {
+        self.peer_addr.clone()
     }
 
     pub fn read_task(&self) -> &task::JoinHandle<anyhow::Result<()>> {
@@ -93,7 +107,7 @@ impl BidirectionalTcpAgent {
             Some(entry) => entry.user_facing_chan(),
 
             None => {
-                info!("Could not find entry for type-id {} in the registry", key);
+                debug!("Could not find entry for type-id {} in the registry", key);
 
                 Err(anyhow::Error::msg(format!(
                     "channel of type-id {} not registered",
@@ -118,6 +132,7 @@ impl BidirectionalTcpAgent {
         cap: Option<usize>,
     ) -> (Sender<T>, Receiver<T>) {
         if let Ok(chan) = self.get_channel::<T>() {
+            debug!("Returning already registered channel");
             return chan;
         }
 
