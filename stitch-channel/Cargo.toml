@@ -9,10 +9,14 @@ anyhow = "1.0.31"
 async-channel = "1.4.0"
 async-std = { version = "1.6.2", features = ["tokio02"] }
 async-tls = {version = "0.9.0", default-features = false, features = ["client", "server"]}
+#async-trait = "0.1.38"
 bytes = "0.5.5"
+#dashmap = "3.11.10"
+#downcast-rs = "1.2.0"
 futures-core = "0.3.5"
 futures-util = "0.3.5"
 log = "0.4"
+#mopa = "0.2.2"
 #mio = { version = "0.7.0", features = ["os-poll", "tcp"] }
 rmp-serde = "0.14.4"
 rustls = "0.18.0"

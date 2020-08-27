@@ -381,6 +381,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "match_cast"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7f917d948ec8885c52554a3237b3b866a8edf25087fba2f68905a8275aa08dd"
+
+[[package]]
 name = "memchr"
 version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -713,6 +719,7 @@ dependencies = [
  "async-std",
  "env_logger",
  "log",
+ "match_cast",
  "stitch-channel",
  "uuid",
 ]
@@ -726,27 +733,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-xid",
-]
-
-[[package]]
-name = "tcp-client"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-std",
- "env_logger",
- "log",
- "stitch-channel",
-]
-
-[[package]]
-name = "tcp-echo-server"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "env_logger",
- "log",
- "stitch-channel",
 ]
 
 [[package]]

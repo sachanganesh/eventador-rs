@@ -1,7 +1,7 @@
-use std::env;
 use log::*;
-use stitch_channel::tcp::BiDirectionalTcpChannel;
-use stitch_channel::{Sender};
+use std::env;
+use stitch_channel::tcp::BidirectionalTcpAgent;
+use stitch_channel::Sender;
 
 #[async_std::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -18,7 +18,8 @@ async fn main() -> Result<(), anyhow::Error> {
     };
 
     // create a client connection to the server
-    let dist_chan = BiDirectionalTcpChannel::unbounded(ip_address).expect("Construction of TCP client failed");
+    let dist_chan =
+        BidirectionalTcpAgent::unbounded(ip_address).expect("Construction of TCP client failed");
     let (sender, receiver) = dist_chan.channel();
 
     // ping the server by writing a message to it

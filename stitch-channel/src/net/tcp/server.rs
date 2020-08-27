@@ -1,4 +1,4 @@
-use crate::tcp::BiDirectionalTcpChannel;
+use crate::net::tcp::BidirectionalTcpAgent;
 
 use async_channel::{bounded, unbounded, Receiver, Sender};
 use async_std::io::*;
@@ -6,7 +6,6 @@ use async_std::net::*;
 use async_std::prelude::*;
 use async_std::task;
 use log::*;
-use std::borrow::BorrowMut;
 
 pub struct TcpServer {
     accept_loop_task: task::JoinHandle<Result<()>>,
@@ -38,7 +37,7 @@ impl TcpServer {
                     Some(Ok(write_stream)) => {
                         let addr = write_stream.peer_addr()?;
                         let read_stream = write_stream.clone();
-                        match BiDirectionalTcpChannel::from_raw_parts(
+                        match BidirectionalTcpAgent::from_raw_parts(
                             (read_stream, write_stream),
                             unbounded(),
                             unbounded(),

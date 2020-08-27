@@ -4,7 +4,7 @@ use async_std::net::*;
 use async_std::task;
 use log::info;
 
-pub struct WriteOnlyTcpChannel<T>
+pub struct WriteOnlyTcpAgent<T>
 where
     T: Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
 {
@@ -12,7 +12,7 @@ where
     pub(crate) task: task::JoinHandle<anyhow::Result<()>>,
 }
 
-impl<T> WriteOnlyTcpChannel<T>
+impl<T> WriteOnlyTcpAgent<T>
 where
     T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
 {
@@ -20,7 +20,10 @@ where
         Self::from_parts(ip_addrs, None)
     }
 
-    pub fn bounded<A: ToSocketAddrs + std::fmt::Display>(ip_addrs: A, outgoing_bound: Option<usize>) -> Result<Self> {
+    pub fn bounded<A: ToSocketAddrs + std::fmt::Display>(
+        ip_addrs: A,
+        outgoing_bound: Option<usize>,
+    ) -> Result<Self> {
         Self::from_parts(ip_addrs, outgoing_bound)
     }
 
@@ -38,7 +41,7 @@ where
     pub fn from_raw_parts(stream: TcpStream, chan: (Sender<T>, Receiver<T>)) -> Result<Self> {
         let receiver = chan.1.clone();
 
-        Ok(WriteOnlyTcpChannel {
+        Ok(WriteOnlyTcpAgent {
             tx_chan: chan,
             task: task::spawn(crate::write_to_stream(receiver, stream)),
         })
