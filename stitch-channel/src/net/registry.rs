@@ -58,8 +58,8 @@ impl StitchRegistryEntry {
 
     fn downcast_sender<T: 'static + Send + Sync>(
         downcastable_sender: &GenericChannelEndpoint,
-    ) -> Result<Sender<Box<T>>, anyhow::Error> {
-        if let Some(sender) = downcastable_sender.downcast_ref::<Sender<Box<T>>>() {
+    ) -> Result<Sender<T>, anyhow::Error> {
+        if let Some(sender) = downcastable_sender.downcast_ref::<Sender<T>>() {
             return Ok(sender.clone());
         }
 
@@ -70,8 +70,8 @@ impl StitchRegistryEntry {
 
     fn downcast_receiver<T: 'static + Send + Sync>(
         downcastable_receiver: &GenericChannelEndpoint,
-    ) -> Result<Receiver<Box<T>>, anyhow::Error> {
-        if let Some(receiver) = downcastable_receiver.downcast_ref::<Receiver<Box<T>>>() {
+    ) -> Result<Receiver<T>, anyhow::Error> {
+        if let Some(receiver) = downcastable_receiver.downcast_ref::<Receiver<T>>() {
             return Ok(receiver.clone());
         }
 
@@ -82,7 +82,7 @@ impl StitchRegistryEntry {
 
     pub fn user_facing_chan<T: 'static + Send + Sync>(
         &self,
-    ) -> Result<(Sender<Box<T>>, Receiver<Box<T>>), anyhow::Error> {
+    ) -> Result<(Sender<T>, Receiver<T>), anyhow::Error> {
         match Self::downcast_sender(&self.serializer_sender) {
             Ok(sender) => match Self::downcast_receiver(&self.user_receiver) {
                 Ok(receiver) => Ok((sender, receiver)),

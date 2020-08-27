@@ -65,18 +65,70 @@ impl BidirectionalTcpAgent {
         self.stream_writer_chan.1.close();
     }
 
+    fn get_key_from_type<
+        T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
+    >(
+        &self,
+    ) -> StitchRegistryKey {
+        StitchMessage::hash_type::<T>()
+    }
+
+    pub fn channel_exists<
+        T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
+    >(
+        &self,
+    ) -> bool {
+        let key = self.get_key_from_type::<T>();
+        self.registry.contains_key(&key)
+    }
+
+    pub fn get_channel<
+        T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
+    >(
+        &self,
+    ) -> anyhow::Result<(Sender<T>, Receiver<T>)> {
+        let key = self.get_key_from_type::<T>();
+
+        match self.registry.get(&key) {
+            Some(entry) => entry.user_facing_chan(),
+
+            None => {
+                info!("Could not find entry for type-id {} in the registry", key);
+
+                Err(anyhow::Error::msg(format!(
+                    "channel of type-id {} not registered",
+                    key
+                )))
+            }
+        }
+    }
+
     pub fn unbounded<
         T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
     >(
         &mut self,
     ) -> (Sender<T>, Receiver<T>) {
+        self.bounded(None)
+    }
+
+    pub fn bounded<
+        T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
+    >(
+        &mut self,
+        cap: Option<usize>,
+    ) -> (Sender<T>, Receiver<T>) {
+        if let Ok(chan) = self.get_channel::<T>() {
+            return chan;
+        }
+
         let tid_hash: StitchRegistryKey = StitchMessage::hash_type::<T>();
 
-        let (serializer_sender, serializer_receiver): (Sender<T>, Receiver<T>) = unbounded();
+        let (serializer_sender, serializer_receiver): (Sender<T>, Receiver<T>) =
+            channel_factory(cap);
         let (stream_writer_sender, _) = self.stream_writer_chan();
 
         let (deserializer_sender, deserializer_receiver) = unbounded::<StitchMessage>();
-        let (user_sender, user_receiver): (Sender<T>, Receiver<T>) = unbounded();
+        let (user_sender, user_receiver): (Sender<T>, Receiver<T>) = channel_factory(cap);
 
         self.registry.insert(
             tid_hash,
@@ -97,45 +149,4 @@ impl BidirectionalTcpAgent {
 
         return (serializer_sender, user_receiver);
     }
-
-    fn get_key_from_type<
-        T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
-    >(
-        &self,
-    ) -> StitchRegistryKey {
-        StitchMessage::hash_type::<T>()
-    }
-
-    pub fn channel_exists<
-        T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
-    >(
-        &self,
-    ) -> bool {
-        let key = self.get_key_from_type::<T>();
-        self.registry.contains_key(&key)
-    }
-
-    // pub fn get_channel<
-    //     T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
-    // >(
-    //     &self,
-    // ) -> Result<(Sender<Box<T>>, Receiver<Box<T>>), anyhow::Error> {
-    //     let key = self.get_key_from_type::<T>();
-    //
-    //     match self.registry.get(&key) {
-    //         Some(entry) => match entry.user_facing_chan() {
-    //             Ok(chan) => Ok(chan),
-    //             Err(err) => Err(err),
-    //         }
-    //
-    //         None => {
-    //             error!("Could not find entry for type id {} in the registry", key);
-    //
-    //             Err(anyhow::Error::msg(format!(
-    //                 "channel of type-id {} not registered",
-    //                 key
-    //             )))
-    //         }
-    //     }
-    // }
 }

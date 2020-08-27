@@ -71,7 +71,7 @@ where
 
                             match registry.get(&tid) {
                                 Some(entry) => {
-                                    debug!("Looked up registered channel for type id {}", tid);
+                                    debug!("Looked up registered channel for type-id {}", tid);
                                     let sender = entry.deserializer_sender();
 
                                     debug!("Sending deserialized data to channel");
@@ -84,11 +84,11 @@ where
                                 // got an external message that has not yet been registered for internal consumption
                                 None => {
                                     error!(
-                                        "Could not find entry for type id {} in the registry",
+                                        "Could not find entry for type-id {} in the registry",
                                         tid
                                     );
                                     return Err(anyhow::Error::msg(format!(
-                                        "failed to find channels of type id {} registered",
+                                        "failed to find channels of type-id {} registered",
                                         tid
                                     )));
                                 }
@@ -156,7 +156,7 @@ where
 {
     let tid_hash: StitchRegistryKey = StitchMessage::hash_type::<T>();
 
-    debug!("Starting serialize loop for type ID {}", tid_hash);
+    debug!("Starting serialize loop for type-id {}", tid_hash);
     loop {
         match input.recv().await {
             Ok(msg) => {
@@ -200,7 +200,7 @@ where
 {
     let tid_hash: StitchRegistryKey = StitchMessage::hash_type::<T>();
 
-    debug!("Starting deserialize loop for type ID {}", tid_hash);
+    debug!("Starting deserialize loop for type-id {}", tid_hash);
     loop {
         match input.recv().await {
             Ok(msg) => {
