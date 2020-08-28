@@ -28,8 +28,9 @@ impl TcpClientAgent {
         ip_addrs: A,
         cap: Option<usize>,
     ) -> Result<Self> {
-        info!("Creating client TCP connection to {}", ip_addrs);
-        let read_stream = task::block_on(TcpStream::connect(ip_addrs))?;
+        let read_stream = task::block_on(TcpStream::connect(&ip_addrs))?;
+        info!("Established client TCP connection to {}", ip_addrs);
+
         let write_stream = read_stream.clone();
 
         Self::from_parts((read_stream, write_stream), channel_factory(cap))
@@ -37,15 +38,23 @@ impl TcpClientAgent {
 
     pub fn from_parts(
         (read_stream, write_stream): (TcpStream, TcpStream),
-        (sender, receiver): (Sender<StitchMessage>, Receiver<StitchMessage>),
+        (tcp_write_sender, tcp_write_receiver): (Sender<StitchMessage>, Receiver<StitchMessage>),
     ) -> Result<Self> {
-        let registry: StitchRegistry = crate::net::registry::new_stitch_registry();
-
         let local_addr = read_stream.local_addr()?;
         let peer_addr = read_stream.peer_addr()?;
 
+        let registry: StitchRegistry = crate::net::registry::new();
+
         let read_task = task::spawn(crate::net::read_from_stream(registry.clone(), read_stream));
-        let write_task = task::spawn(crate::net::write_to_stream(receiver.clone(), write_stream));
+        let write_task = task::spawn(crate::net::write_to_stream(
+            tcp_write_receiver.clone(),
+            write_stream,
+        ));
+        info!(
+            "Running serialize ({}) and deserialize ({}) tasks",
+            read_task.task().id(),
+            write_task.task().id()
+        );
 
         Ok(Self {
             local_addr,
@@ -53,7 +62,7 @@ impl TcpClientAgent {
             registry,
             read_task,
             write_task,
-            stream_writer_chan: (sender, receiver),
+            stream_writer_chan: (tcp_write_sender, tcp_write_receiver),
         })
     }
 

@@ -6,16 +6,16 @@ use async_std::task::JoinHandle;
 use dashmap::DashMap;
 use std::any::Any;
 
-pub(crate) type StitchRegistry = Arc<DashMap<StitchRegistryKey, Arc<StitchRegistryEntry>>>;
+pub type StitchRegistry = Arc<DashMap<StitchRegistryKey, Arc<StitchRegistryEntry>>>;
 
-pub(crate) fn new_stitch_registry() -> StitchRegistry {
+pub fn new() -> StitchRegistry {
     Arc::new(DashMap::new())
 }
 
-pub(crate) type StitchRegistryKey = u64;
+pub type StitchRegistryKey = u64;
 
 type GenericChannelEndpoint = Box<dyn Any + Send + Sync>;
-pub(crate) struct StitchRegistryEntry {
+pub struct StitchRegistryEntry {
     serializer_sender: GenericChannelEndpoint,
     serializer_receiver: GenericChannelEndpoint,
 

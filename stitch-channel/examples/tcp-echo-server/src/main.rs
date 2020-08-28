@@ -45,6 +45,7 @@ async fn echo_server(connections: Receiver<Arc<TcpClientAgent>>) {
                     error!("Could not echo message: {:#?}", err);
                 }
             }
-        }).await;
+        })
+        .await;
     }
 }

@@ -421,12 +421,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "match_cast"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7f917d948ec8885c52554a3237b3b866a8edf25087fba2f68905a8275aa08dd"
-
-[[package]]
 name = "memchr"
 version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -497,9 +491,9 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "ppv-lite86"
-version = "0.2.8"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "237a5ed80e274dbc66f86bd59c1e25edc039660be53194b5fe0a482e0f2612ea"
+checksum = "c36fa947111f5c62a733b652544dd0016a43ce89619538a8ef92724a6f501a20"
 
 [[package]]
 name = "proc-macro-hack"
@@ -760,7 +754,6 @@ dependencies = [
  "async-std",
  "env_logger",
  "log",
- "match_cast",
  "stitch-channel",
  "uuid",
 ]
