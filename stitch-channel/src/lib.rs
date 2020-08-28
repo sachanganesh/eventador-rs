@@ -28,11 +28,7 @@ impl StitchMessage {
     }
 }
 
-pub(crate) fn channel_factory<
-    T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
->(
-    mut bound: Option<usize>,
-) -> (Sender<T>, Receiver<T>) {
+pub(crate) fn channel_factory<T>(mut bound: Option<usize>) -> (Sender<T>, Receiver<T>) {
     if let Some(bound) = bound.take() {
         bounded(bound)
     } else {

@@ -12,7 +12,6 @@ use futures_util::io::{AsyncRead, AsyncWrite};
 use log::*;
 use rmp_serde::{decode, encode};
 use serde::Deserialize;
-use std::any::Any;
 use std::io::Cursor;
 
 const BUFFER_SIZE: usize = 8192;
@@ -83,6 +82,7 @@ where
 
                                 // got an external message that has not yet been registered for internal consumption
                                 None => {
+                                    // @todo need to create a channel on a need-by-need basis
                                     error!(
                                         "Could not find entry for type-id {} in the registry",
                                         tid
@@ -96,7 +96,7 @@ where
                         }
 
                         Err(err) => {
-                            error!("Could not deserialize data from TCP connection: {:#?}", err);
+                            warn!("Could not deserialize data from TCP connection: {:#?}", err);
                             pending = Some(buffer);
                             buffer = BytesMut::new();
                             break;

@@ -6,13 +6,13 @@ use log::*;
 
 use crate::net::registry::{StitchRegistry, StitchRegistryEntry, StitchRegistryKey};
 use crate::{channel_factory, StitchMessage};
+use async_std::sync::Arc;
 use dashmap::mapref::one::Ref;
 use std::any::Any;
-use std::sync::Arc;
 
 pub struct TcpClientAgent {
-    local_addr: Result<SocketAddr>,
-    peer_addr: Result<SocketAddr>,
+    local_addr: SocketAddr,
+    peer_addr: SocketAddr,
     registry: StitchRegistry,
     stream_writer_chan: (Sender<StitchMessage>, Receiver<StitchMessage>),
     read_task: task::JoinHandle<anyhow::Result<()>>,
@@ -32,11 +32,17 @@ impl TcpClientAgent {
         let read_stream = task::block_on(TcpStream::connect(ip_addrs))?;
         let write_stream = read_stream.clone();
 
-        let (sender, receiver) = channel_factory(cap);
+        Self::from_parts((read_stream, write_stream), channel_factory(cap))
+    }
+
+    pub fn from_parts(
+        (read_stream, write_stream): (TcpStream, TcpStream),
+        (sender, receiver): (Sender<StitchMessage>, Receiver<StitchMessage>),
+    ) -> Result<Self> {
         let registry: StitchRegistry = crate::net::registry::new_stitch_registry();
 
-        let local_addr = read_stream.local_addr();
-        let peer_addr = read_stream.peer_addr();
+        let local_addr = read_stream.local_addr()?;
+        let peer_addr = read_stream.peer_addr()?;
 
         let read_task = task::spawn(crate::net::read_from_stream(registry.clone(), read_stream));
         let write_task = task::spawn(crate::net::write_to_stream(receiver.clone(), write_stream));
@@ -58,11 +64,11 @@ impl TcpClientAgent {
         )
     }
 
-    pub fn local_addr(&self) -> Result<SocketAddr> {
+    pub fn local_addr(&self) -> SocketAddr {
         self.local_addr.clone()
     }
 
-    pub fn peer_addr(&self) -> Result<SocketAddr> {
+    pub fn peer_addr(&self) -> SocketAddr {
         self.peer_addr.clone()
     }
 
@@ -120,7 +126,7 @@ impl TcpClientAgent {
     pub fn unbounded<
         T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
     >(
-        &mut self,
+        &self,
     ) -> (Sender<T>, Receiver<T>) {
         self.bounded(None)
     }
@@ -128,7 +134,7 @@ impl TcpClientAgent {
     pub fn bounded<
         T: 'static + Send + Sync + serde::ser::Serialize + for<'de> serde::de::Deserialize<'de>,
     >(
-        &mut self,
+        &self,
         cap: Option<usize>,
     ) -> (Sender<T>, Receiver<T>) {
         if let Ok(chan) = self.get_channel::<T>() {

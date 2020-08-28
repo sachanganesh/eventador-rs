@@ -1,9 +1,9 @@
 use crate::net::*;
+use async_std::sync::Arc;
 use async_std::task;
 use async_std::task::JoinHandle;
 use dashmap::DashMap;
 use std::any::Any;
-use std::sync::Arc;
 
 pub(crate) type StitchRegistry = Arc<DashMap<StitchRegistryKey, Arc<StitchRegistryEntry>>>;
 

@@ -3,7 +3,9 @@ use async_std::{io, task};
 use std::{fs::File, io::BufReader};
 use uuid::Uuid;
 
-use stitch_channel::net::tcp::BidirectionalTcpAgent as TcpChannel;
+use async_std::sync::Arc;
+use stitch_channel::net::tcp::TcpClientAgent as TcpClient;
+use stitch_channel::net::tcp::TcpServerAgent as TcpServer;
 // use stitch_channel::net::tls::rustls::internal::pemfile::{certs, rsa_private_keys};
 // use stitch_channel::net::tls::{
 //     rustls::{ClientConfig, NoClientAuth, ServerConfig},
@@ -21,7 +23,7 @@ const IP_ADDR: &str = "localhost:5678";
 async fn main() -> Result<(), anyhow::Error> {
     env_logger::init();
 
-    let mut dist_chan = test_tcp()?;
+    let dist_chan = test_tcp()?;
     // let dist_chan = test_tls()?;
 
     let (sender, receiver) = dist_chan.unbounded();
@@ -34,23 +36,14 @@ async fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-// async fn handle_connections(
-//     (sender, receiver): (Sender<dyn StitchMessage>, Receiver<dyn StitchMessage>),
-// ) {
-//     debug!("Starting echo loop");
-//
-//     while let Ok(data) = receiver.recv().await {
-//         // info!("Echoing: {}", data);
-//         sender.send(data).await.expect("it works");
-//     }
-// }
+fn test_tcp() -> Result<TcpClient, anyhow::Error> {
+    let (_, conns) = TcpServer::new(IP_ADDR).expect("server doesn't work");
+    let _handle = task::spawn(echo_server(conns));
 
-fn test_tcp() -> Result<TcpChannel, anyhow::Error> {
-    // let echo_server = TcpServer::unbounded(IP_ADDR, handle_connections).expect("it works");
-    Ok(TcpChannel::new(IP_ADDR).expect("it works"))
+    Ok(TcpClient::new(IP_ADDR).expect("client doesn't work"))
 }
 
-async fn async_read(receiver: Receiver<Box<String>>) {
+async fn async_read(receiver: Receiver<String>) {
     for i in 0..MAX_MESSAGES + 1 {
         if let Ok(data) = receiver.recv().await {
             info!("Received #{}: {}", i, data);
@@ -58,16 +51,32 @@ async fn async_read(receiver: Receiver<Box<String>>) {
     }
 }
 
-async fn async_write(sender: Sender<Box<String>>) -> Result<(), anyhow::Error> {
+async fn async_write(sender: Sender<String>) -> Result<(), anyhow::Error> {
     for i in 0..MAX_MESSAGES {
         let id = Uuid::new_v4();
         let msg = format!("Hello, {}", id);
 
         info!("Sending #{}: {}", i, msg);
-        sender.send(Box::new(msg)).await?;
+        sender.send(msg).await?;
     }
 
     Ok(())
+}
+
+async fn echo_server(connections: Receiver<Arc<TcpClient>>) {
+    for conn in connections.recv().await {
+        task::spawn(async move {
+            let (sender, receiver) = conn.unbounded::<String>();
+
+            while let Ok(msg) = receiver.recv().await {
+                info!("Echoing message: {}", msg);
+
+                if let Err(err) = sender.send(msg).await {
+                    error!("Could not echo message: {:#?}", err);
+                }
+            }
+        });
+    }
 }
 
 // fn test_tls() -> Result<TlsChannel<String>, anyhow::Error> {
