@@ -2,10 +2,9 @@ mod registry;
 pub mod tcp;
 // pub mod tls;
 
-pub use async_channel::{Receiver, Sender};
-
 use crate::net::registry::{StitchRegistry, StitchRegistryKey};
 use crate::StitchMessage;
+use async_channel::{Receiver, Sender};
 use async_std::prelude::*;
 use bytes::{Buf, BytesMut};
 use futures_util::io::{AsyncRead, AsyncWrite};

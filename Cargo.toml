@@ -7,10 +7,9 @@ edition = "2018"
 [workspace]
 members = [
     "stitch-channel",
-#    "stitch-channel/examples/tcp-echo-server",
-#    "stitch-channel/examples/tcp-client",
+    "stitch-channel/examples/tcp-echo-server",
+    "stitch-channel/examples/tcp-client",
 ]
-exclude = []
 
 [dependencies]
 anyhow = "1.0.31"

@@ -1,4 +1,5 @@
 use crate::net::*;
+use async_channel::{Receiver, Sender};
 use async_std::sync::Arc;
 use async_std::task;
 use async_std::task::JoinHandle;

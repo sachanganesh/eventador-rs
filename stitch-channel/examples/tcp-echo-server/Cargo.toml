@@ -8,6 +8,8 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.31"
+async-std = { version = "1.6.2", features = ["attributes"] }
 env_logger = "0.7"
 log = "0.4"
+
 stitch-channel = { path = "../../" }

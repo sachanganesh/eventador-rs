@@ -1,6 +1,9 @@
 pub mod net;
 
-use async_channel::{bounded, unbounded, Receiver, Sender};
+pub use async_channel::{Receiver, Sender};
+pub use async_std::sync::Arc;
+
+use async_channel::{bounded, unbounded};
 use serde::{Deserialize, Serialize};
 use std::any::TypeId;
 use std::collections::hash_map::DefaultHasher;

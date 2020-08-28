@@ -1,10 +1,10 @@
 use log::*;
 use std::env;
-use stitch_channel::tcp::BidirectionalTcpAgent;
+use stitch_channel::net::tcp::TcpClientAgent;
 use stitch_channel::Sender;
 
 #[async_std::main]
-async fn main() -> Result<(), anyhow::Error> {
+async fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     // Get ip address from cmd line args
@@ -12,17 +12,18 @@ async fn main() -> Result<(), anyhow::Error> {
     let ip_address = match args.get(1) {
         Some(addr) => addr,
         None => {
-            error!("Need to pass IP address to bind to as command line argument");
+            error!("Need to pass IP address to connect to as command line argument");
             panic!();
         }
     };
 
     // create a client connection to the server
-    let dist_chan =
-        BidirectionalTcpAgent::unbounded(ip_address).expect("Construction of TCP client failed");
-    let (sender, receiver) = dist_chan.channel();
+    let dist_chan = TcpClientAgent::new(ip_address)?;
 
-    // ping the server by writing a message to it
+    // create a channel for String messages on the TCP connection
+    let (sender, receiver) = dist_chan.bounded::<String>(Some(100));
+
+    // ping the server by sending a message
     ping_server(sender).await?;
 
     // wait for the server to reply with an ack
@@ -33,7 +34,7 @@ async fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-async fn ping_server(sender: Sender<String>) -> Result<(), anyhow::Error> {
+async fn ping_server(sender: Sender<String>) -> anyhow::Result<()> {
     let msg = String::from("Hello world");
 
     info!("Sending message: {}", msg);
