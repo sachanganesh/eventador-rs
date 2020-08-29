@@ -1,4 +1,4 @@
-use crate::net::registry::{StitchRegistry, StitchRegistryEntry, StitchRegistryKey};
+use crate::net::registry::{StitchRegistry, StitchRegistryKey};
 use crate::{channel_factory, StitchMessage};
 use async_channel::{unbounded, Receiver, Sender};
 use async_std::net::SocketAddr;

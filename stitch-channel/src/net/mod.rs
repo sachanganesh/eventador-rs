@@ -6,18 +6,19 @@ pub mod tls;
 use crate::net::registry::{StitchRegistry, StitchRegistryEntry, StitchRegistryKey};
 use crate::{channel_factory, StitchMessage};
 use async_channel::{unbounded, Receiver, Sender};
-use async_std::net::SocketAddr;
+use async_std::net::{SocketAddr, TcpListener};
 use async_std::prelude::*;
 use async_std::sync::Arc;
 use async_std::task;
 use bytes::{Buf, BytesMut};
+use dashmap::DashMap;
 use futures_util::io::{AsyncRead, AsyncWrite};
 use log::*;
 use rmp_serde::{decode, encode};
 use serde::Deserialize;
 use std::io::Cursor;
 
-pub trait StitchNetClient {
+pub trait StitchClient {
     fn registry(&self) -> StitchRegistry;
     fn stream_writer_chan(&self) -> (Sender<StitchMessage>, Receiver<StitchMessage>);
 
@@ -113,7 +114,7 @@ pub trait StitchNetClient {
     }
 }
 
-pub struct StitchNetClientAgent {
+pub struct StitchNetClient {
     local_addr: SocketAddr,
     peer_addr: SocketAddr,
     registry: StitchRegistry,
@@ -122,7 +123,7 @@ pub struct StitchNetClientAgent {
     write_task: task::JoinHandle<anyhow::Result<()>>,
 }
 
-impl StitchNetClient for StitchNetClientAgent {
+impl StitchClient for StitchNetClient {
     fn registry(&self) -> StitchRegistry {
         self.registry.clone()
     }
@@ -149,5 +150,32 @@ impl StitchNetClient for StitchNetClientAgent {
 
         task::block_on(self.read_task.cancel());
         task::block_on(self.write_task.cancel());
+    }
+}
+
+type ServerRegistry = Arc<DashMap<SocketAddr, Arc<StitchNetClient>>>;
+
+pub trait StitchServer {
+    fn accept_loop_task(&self) -> &task::JoinHandle<anyhow::Result<()>>;
+
+    fn close(self);
+}
+
+pub struct StitchNetServer {
+    registry: ServerRegistry,
+    connections_chan: (Sender<Arc<StitchNetClient>>, Receiver<Arc<StitchNetClient>>),
+    accept_loop_task: task::JoinHandle<anyhow::Result<()>>,
+}
+
+impl StitchServer for StitchNetServer {
+    fn accept_loop_task(&self) -> &task::JoinHandle<anyhow::Result<()>> {
+        &self.accept_loop_task
+    }
+
+    fn close(self) {
+        self.connections_chan.0.close();
+        self.connections_chan.1.close();
+
+        task::block_on(self.accept_loop_task.cancel());
     }
 }

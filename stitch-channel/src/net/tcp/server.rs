@@ -1,6 +1,5 @@
 use crate::channel_factory;
-use crate::net::tcp::tcp_client_from_parts;
-use crate::net::{StitchNetClient, StitchNetClientAgent};
+use crate::net::{ServerRegistry, StitchClient, StitchNetClient, StitchNetServer};
 use async_channel::{bounded, unbounded, Receiver, Sender};
 use async_std::io::*;
 use async_std::net::*;
@@ -10,35 +9,24 @@ use async_std::task;
 use dashmap::DashMap;
 use log::*;
 
-type ServerRegistry = Arc<DashMap<SocketAddr, Arc<StitchNetClientAgent>>>;
-
-pub struct TcpServerAgent {
-    registry: ServerRegistry,
-    connections_chan: (
-        Sender<Arc<StitchNetClientAgent>>,
-        Receiver<Arc<StitchNetClientAgent>>,
-    ),
-    accept_loop_task: task::JoinHandle<Result<()>>,
-}
-
-impl TcpServerAgent {
-    pub fn new<A: ToSocketAddrs + std::fmt::Display>(
+impl StitchNetServer {
+    pub fn tcp_server<A: ToSocketAddrs + std::fmt::Display>(
         ip_addrs: A,
-    ) -> Result<(Self, Receiver<Arc<StitchNetClientAgent>>)> {
-        Self::with_bound(ip_addrs, None)
+    ) -> Result<(StitchNetServer, Receiver<Arc<StitchNetClient>>)> {
+        Self::tcp_server_with_bound(ip_addrs, None)
     }
 
-    pub fn with_bound<A: ToSocketAddrs + std::fmt::Display>(
+    pub fn tcp_server_with_bound<A: ToSocketAddrs + std::fmt::Display>(
         ip_addrs: A,
         cap: Option<usize>,
-    ) -> Result<(Self, Receiver<Arc<StitchNetClientAgent>>)> {
+    ) -> Result<(Self, Receiver<Arc<StitchNetClient>>)> {
         let listener = task::block_on(TcpListener::bind(ip_addrs))?;
         info!("Started TCP server at {}", listener.local_addr()?);
 
         let registry = Arc::new(DashMap::new());
         let (sender, receiver) = channel_factory(cap);
 
-        let handler = task::spawn(Self::handle_connections(
+        let handler = task::spawn(handle_server_connections(
             registry.clone(),
             listener,
             sender.clone(),
@@ -46,7 +34,7 @@ impl TcpServerAgent {
         ));
 
         Ok((
-            TcpServerAgent {
+            Self {
                 registry,
                 connections_chan: (sender, receiver.clone()),
                 accept_loop_task: handler,
@@ -54,63 +42,57 @@ impl TcpServerAgent {
             receiver,
         ))
     }
+}
 
-    pub fn accept_loop_task(&self) -> &task::JoinHandle<Result<()>> {
-        &self.accept_loop_task
-    }
+async fn handle_server_connections<'a>(
+    registry: ServerRegistry,
+    input: TcpListener,
+    output: Sender<Arc<StitchNetClient>>,
+    cap: Option<usize>,
+) -> anyhow::Result<()> {
+    let mut conns = input.incoming();
 
-    pub fn close(self) {
-        self.connections_chan.0.close();
-        task::block_on(self.accept_loop_task.cancel());
-    }
+    loop {
+        debug!("Reading from the stream of incoming connections");
+        match conns.next().await {
+            Some(Ok(read_stream)) => {
+                debug!(
+                    "Received connection attempt from {}",
+                    read_stream.peer_addr()?
+                );
+                let addr = read_stream.peer_addr()?;
+                let write_stream = read_stream.clone();
 
-    async fn handle_connections<'a>(
-        registry: ServerRegistry,
-        input: TcpListener,
-        output: Sender<Arc<StitchNetClientAgent>>,
-        cap: Option<usize>,
-    ) -> Result<()> {
-        let mut conns = input.incoming();
+                match StitchNetClient::tcp_client_from_parts(
+                    (read_stream, write_stream),
+                    channel_factory(cap),
+                ) {
+                    Ok(client) => {
+                        info!("Accepted a connection from {}", addr);
 
-        loop {
-            debug!("Reading from the stream of incoming connections");
-            match conns.next().await {
-                Some(Ok(read_stream)) => {
-                    debug!(
-                        "Received connection attempt from {}",
-                        read_stream.peer_addr()?
-                    );
-                    let addr = read_stream.peer_addr()?;
-                    let write_stream = read_stream.clone();
+                        let client = Arc::new(client);
+                        registry.insert(client.peer_addr(), client.clone());
 
-                    match tcp_client_from_parts((read_stream, write_stream), channel_factory(cap)) {
-                        Ok(client) => {
-                            info!("Accepted a connection from {}", addr);
-
-                            let client = Arc::new(client);
-                            registry.insert(client.peer_addr(), client.clone());
-
-                            if let Err(err) = output.send(client).await {
-                                warn!(
-                                    "Could not send accepted TCP client connection to channel: {:#?}",
-                                    err
-                                )
-                            }
+                        if let Err(err) = output.send(client).await {
+                            warn!(
+                                "Could not send accepted TCP client connection to channel: {:#?}",
+                                err
+                            )
                         }
-
-                        Err(err) => error!(
-                            "Encountered error when creating TCP client agent: {:#?}",
-                            err
-                        ),
                     }
-                }
 
-                Some(Err(err)) => error!(
-                    "Encountered error when accepting TCP connection: {:#?}",
-                    err
-                ),
-                None => unreachable!(),
+                    Err(err) => error!(
+                        "Encountered error when creating TCP client agent: {:#?}",
+                        err
+                    ),
+                }
             }
+
+            Some(Err(err)) => error!(
+                "Encountered error when accepting TCP connection: {:#?}",
+                err
+            ),
+            None => unreachable!(),
         }
     }
 }

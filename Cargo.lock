@@ -88,6 +88,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-trait"
+version = "0.1.39"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a973ceb857cff7575b825fe4c5fae998a797bc51be8bff06922e4762ac80ab46"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "atomic-waker"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -735,6 +746,7 @@ dependencies = [
  "async-channel",
  "async-std",
  "async-tls",
+ "async-trait",
  "bytes",
  "dashmap",
  "futures-core",
