@@ -1,10 +1,7 @@
 use crate::net::registry::{StitchRegistry, StitchRegistryKey};
-use crate::{channel_factory, StitchMessage};
-use async_channel::{unbounded, Receiver, Sender};
-use async_std::net::SocketAddr;
+use crate::StitchMessage;
+use async_channel::{Receiver, Sender};
 use async_std::prelude::*;
-use async_std::sync::Arc;
-use async_std::task;
 use bytes::{Buf, BytesMut};
 use futures_util::io::{AsyncRead, AsyncWrite};
 use log::*;

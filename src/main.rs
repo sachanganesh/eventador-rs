@@ -19,8 +19,8 @@ const IP_ADDR: &str = "localhost:5678";
 async fn main() -> Result<(), anyhow::Error> {
     env_logger::init();
 
-    // let dist_chan = test_tcp()?;
-    let dist_chan = test_tls()?;
+    let dist_chan = test_tcp()?;
+    // let dist_chan = test_tls()?;
 
     let (sender, receiver) = dist_chan.unbounded();
 

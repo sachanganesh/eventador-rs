@@ -1,15 +1,12 @@
-use async_channel::{unbounded, Receiver, Sender};
+use async_channel::{Receiver, Sender};
 use async_std::io::*;
 use async_std::net::*;
 use async_std::task;
 use log::*;
 
-use crate::net::registry::{StitchRegistry, StitchRegistryEntry, StitchRegistryKey};
+use crate::net::registry::StitchRegistry;
 use crate::net::StitchNetClient;
 use crate::{channel_factory, StitchMessage};
-use async_std::sync::Arc;
-use dashmap::mapref::one::Ref;
-use std::any::Any;
 
 impl StitchNetClient {
     pub fn tcp_client<A: ToSocketAddrs + std::fmt::Display>(ip_addrs: A) -> Result<Self> {

@@ -1,17 +1,13 @@
-pub use async_tls;
-pub use rustls;
-
 use async_channel::{Receiver, Sender};
 use async_std::io::*;
 use async_std::net::*;
 use async_std::task;
-use async_std::task::JoinHandle;
-use async_tls::{client::TlsStream, TlsConnector};
-use futures_util::io::{AsyncReadExt, ReadHalf, WriteHalf};
+use async_tls::TlsConnector;
+use futures_util::io::AsyncReadExt;
 use log::*;
 
 use crate::net::registry::StitchRegistry;
-use crate::net::{StitchClient, StitchNetClient};
+use crate::net::StitchNetClient;
 use crate::{channel_factory, StitchMessage};
 
 impl StitchNetClient {

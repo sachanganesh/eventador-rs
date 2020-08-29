@@ -6,17 +6,11 @@ pub mod tls;
 use crate::net::registry::{StitchRegistry, StitchRegistryEntry, StitchRegistryKey};
 use crate::{channel_factory, StitchMessage};
 use async_channel::{unbounded, Receiver, Sender};
-use async_std::net::{SocketAddr, TcpListener};
-use async_std::prelude::*;
+use async_std::net::SocketAddr;
 use async_std::sync::Arc;
 use async_std::task;
-use bytes::{Buf, BytesMut};
 use dashmap::DashMap;
-use futures_util::io::{AsyncRead, AsyncWrite};
 use log::*;
-use rmp_serde::{decode, encode};
-use serde::Deserialize;
-use std::io::Cursor;
 
 pub trait StitchClient {
     fn registry(&self) -> StitchRegistry;
