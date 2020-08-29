@@ -4,14 +4,14 @@ use std::{fs::File, io::BufReader};
 use uuid::Uuid;
 
 use async_std::sync::Arc;
-use stitch_channel::net::tcp::TcpClientAgent;
 use stitch_channel::net::tcp::TcpServerAgent;
 use stitch_channel::net::tls::rustls::internal::pemfile::{certs, rsa_private_keys};
 use stitch_channel::net::tls::{
     rustls::{ClientConfig, NoClientAuth, ServerConfig},
-    TlsClientAgent,
+    tls_client,
 };
-use stitch_channel::net::StitchAgent;
+use stitch_channel::net::StitchNetClient;
+use stitch_channel::net::{tcp, StitchNetClientAgent};
 
 #[macro_use]
 extern crate log;
@@ -24,8 +24,8 @@ const IP_ADDR: &str = "localhost:5678";
 async fn main() -> Result<(), anyhow::Error> {
     env_logger::init();
 
-    // let dist_chan = test_tcp()?;
-    let dist_chan = test_tls()?;
+    let dist_chan = test_tcp()?;
+    // let dist_chan = test_tls()?;
 
     let (sender, receiver) = dist_chan.unbounded();
 
@@ -37,11 +37,11 @@ async fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn test_tcp() -> Result<TcpClientAgent, anyhow::Error> {
+fn test_tcp() -> Result<StitchNetClientAgent, anyhow::Error> {
     let (_, conns) = TcpServerAgent::new(IP_ADDR).expect("server doesn't work");
     let _handle = task::spawn(echo_server(conns));
 
-    Ok(TcpClientAgent::new(IP_ADDR)?)
+    Ok(tcp::tcp_client(IP_ADDR)?)
 }
 
 async fn async_read(receiver: Receiver<String>) {
@@ -64,7 +64,7 @@ async fn async_write(sender: Sender<String>) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-async fn echo_server(connections: Receiver<Arc<TcpClientAgent>>) {
+async fn echo_server(connections: Receiver<Arc<StitchNetClientAgent>>) {
     for conn in connections.recv().await {
         task::spawn(async move {
             let (sender, receiver) = conn.unbounded::<String>();
@@ -80,7 +80,7 @@ async fn echo_server(connections: Receiver<Arc<TcpClientAgent>>) {
     }
 }
 
-fn test_tls() -> Result<TlsClientAgent, anyhow::Error> {
+fn test_tls() -> Result<StitchNetClientAgent, anyhow::Error> {
     // let mut config = ServerConfig::new(NoClientAuth::new());
     // let cert_path = "/home/svganesh/Documents/tools/echo-server/async-tls/tests/end.cert";
     // let key_path = "/home/svganesh/Documents/tools/echo-server/async-tls/tests/end.rsa";
@@ -104,7 +104,7 @@ fn test_tls() -> Result<TlsClientAgent, anyhow::Error> {
         .add_pem_file(&mut client_pem)
         .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid cert"))
         .expect("it works");
-    match TlsClientAgent::new(IP_ADDR, DOMAIN, client_config.into()) {
+    match tls_client(IP_ADDR, DOMAIN, client_config.into()) {
         Ok(data) => Ok(data),
         Err(err) => {
             error!("{}", err);

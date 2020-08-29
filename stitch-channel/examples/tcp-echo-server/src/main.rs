@@ -1,7 +1,7 @@
 use async_std::task;
 use log::*;
 use std::env;
-use stitch_channel::net::tcp::{TcpClientAgent, TcpServerAgent};
+use stitch_channel::net::tcp::TcpServerAgent;
 use stitch_channel::{Arc, Receiver};
 
 #[async_std::main]

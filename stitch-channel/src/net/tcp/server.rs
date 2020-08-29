@@ -1,6 +1,6 @@
-use crate::net::tcp::TcpClientAgent;
-
 use crate::channel_factory;
+use crate::net::tcp::tcp_client_from_parts;
+use crate::net::{StitchNetClient, StitchNetClientAgent};
 use async_channel::{bounded, unbounded, Receiver, Sender};
 use async_std::io::*;
 use async_std::net::*;
@@ -10,25 +10,28 @@ use async_std::task;
 use dashmap::DashMap;
 use log::*;
 
-type ServerRegistry = Arc<DashMap<SocketAddr, Arc<TcpClientAgent>>>;
+type ServerRegistry = Arc<DashMap<SocketAddr, Arc<StitchNetClientAgent>>>;
 
 pub struct TcpServerAgent {
     registry: ServerRegistry,
-    connections_chan: (Sender<Arc<TcpClientAgent>>, Receiver<Arc<TcpClientAgent>>),
+    connections_chan: (
+        Sender<Arc<StitchNetClientAgent>>,
+        Receiver<Arc<StitchNetClientAgent>>,
+    ),
     accept_loop_task: task::JoinHandle<Result<()>>,
 }
 
 impl TcpServerAgent {
     pub fn new<A: ToSocketAddrs + std::fmt::Display>(
         ip_addrs: A,
-    ) -> Result<(Self, Receiver<Arc<TcpClientAgent>>)> {
+    ) -> Result<(Self, Receiver<Arc<StitchNetClientAgent>>)> {
         Self::with_bound(ip_addrs, None)
     }
 
     pub fn with_bound<A: ToSocketAddrs + std::fmt::Display>(
         ip_addrs: A,
         cap: Option<usize>,
-    ) -> Result<(Self, Receiver<Arc<TcpClientAgent>>)> {
+    ) -> Result<(Self, Receiver<Arc<StitchNetClientAgent>>)> {
         let listener = task::block_on(TcpListener::bind(ip_addrs))?;
         info!("Started TCP server at {}", listener.local_addr()?);
 
@@ -64,7 +67,7 @@ impl TcpServerAgent {
     async fn handle_connections<'a>(
         registry: ServerRegistry,
         input: TcpListener,
-        output: Sender<Arc<TcpClientAgent>>,
+        output: Sender<Arc<StitchNetClientAgent>>,
         cap: Option<usize>,
     ) -> Result<()> {
         let mut conns = input.incoming();
@@ -80,10 +83,7 @@ impl TcpServerAgent {
                     let addr = read_stream.peer_addr()?;
                     let write_stream = read_stream.clone();
 
-                    match TcpClientAgent::from_parts(
-                        (read_stream, write_stream),
-                        channel_factory(cap),
-                    ) {
+                    match tcp_client_from_parts((read_stream, write_stream), channel_factory(cap)) {
                         Ok(client) => {
                             info!("Accepted a connection from {}", addr);
 
