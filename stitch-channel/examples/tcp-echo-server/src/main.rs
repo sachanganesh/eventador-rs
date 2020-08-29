@@ -1,7 +1,7 @@
 use async_std::task;
 use log::*;
 use std::env;
-use stitch_channel::net::tcp::TcpServerAgent;
+use stitch_channel::net::{StitchClient, StitchNetClient, StitchNetServer};
 use stitch_channel::{Arc, Receiver};
 
 #[async_std::main]
@@ -20,13 +20,13 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // create a server
-    let (_server, conns) = TcpServerAgent::new(ip_address)?;
+    let (_server, conns) = StitchNetServer::tcp_server(ip_address)?;
 
     // handle server connections
     Ok(echo_server(conns).await)
 }
 
-async fn echo_server(connections: Receiver<Arc<TcpClientAgent>>) {
+async fn echo_server(connections: Receiver<Arc<StitchNetClient>>) {
     // wait for a connection to come in and be accepted
     for conn in connections.recv().await {
         // register for String-typed messages

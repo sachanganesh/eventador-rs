@@ -1,6 +1,6 @@
 use log::*;
 use std::env;
-use stitch_channel::net::tcp::TcpClientAgent;
+use stitch_channel::net::{StitchClient, StitchNetClient};
 use stitch_channel::Sender;
 
 #[async_std::main]
@@ -18,27 +18,20 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // create a client connection to the server
-    let dist_chan = TcpClientAgent::new(ip_address)?;
+    let dist_chan = StitchNetClient::tcp_client(ip_address)?;
 
     // create a channel for String messages on the TCP connection
     let (sender, receiver) = dist_chan.bounded::<String>(Some(100));
 
-    // ping the server by sending a message
-    ping_server(sender).await?;
+    // send a message to the server
+    let msg = String::from("Hello world");
+    info!("Sending message: {}", msg);
+    sender.send(msg).await?;
 
     // wait for the server to reply with an ack
     if let Ok(msg) = receiver.recv().await {
-        info!("Received ack message: {}", msg);
+        info!("Received reply: {}", msg);
     }
-
-    Ok(())
-}
-
-async fn ping_server(sender: Sender<String>) -> anyhow::Result<()> {
-    let msg = String::from("Hello world");
-
-    info!("Sending message: {}", msg);
-    sender.send(msg).await?;
 
     Ok(())
 }
