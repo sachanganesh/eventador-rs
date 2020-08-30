@@ -11,7 +11,7 @@ use stitch_channel::net::*;
 #[macro_use]
 extern crate log;
 
-const MAX_MESSAGES: usize = 150;
+const MAX_MESSAGES: usize = 1;
 const DOMAIN: &str = "localhost";
 const IP_ADDR: &str = "localhost:5678";
 
@@ -27,13 +27,14 @@ async fn main() -> Result<(), anyhow::Error> {
     let read_task = task::spawn(async_read(receiver));
     let _write_task = task::spawn(async_write(sender));
 
+    dist_chan.ready()?;
     read_task.await;
 
     Ok(())
 }
 
 fn test_tcp() -> Result<StitchNetClient, anyhow::Error> {
-    let (_, conns) = StitchNetServer::tcp_server(IP_ADDR).expect("server doesn't work");
+    let (server, conns) = StitchNetServer::tcp_server(IP_ADDR).expect("server doesn't work");
     let _handle = task::spawn(echo_server(conns));
 
     Ok(StitchNetClient::tcp_client(IP_ADDR)?)
@@ -63,6 +64,8 @@ async fn echo_server(connections: Receiver<Arc<StitchNetClient>>) {
     for conn in connections.recv().await {
         task::spawn(async move {
             let (sender, receiver) = conn.unbounded::<String>();
+
+            conn.ready().expect("could not start read and write tasks");
 
             while let Ok(msg) = receiver.recv().await {
                 info!("Echoing message: {}", msg);

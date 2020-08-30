@@ -7,18 +7,25 @@ use crate::net::registry::{StitchRegistry, StitchRegistryEntry, StitchRegistryKe
 use crate::{channel_factory, StitchMessage};
 use async_channel::{unbounded, Receiver, Sender};
 use async_std::net::SocketAddr;
-use async_std::sync::Arc;
+use async_std::sync::{Arc, Condvar, Mutex};
 use async_std::task;
+use async_std::task::JoinHandle;
 use dashmap::DashMap;
 use log::*;
 
 pub trait StitchClient {
-    fn registry(&self) -> StitchRegistry;
-    fn stream_writer_chan(&self) -> (Sender<StitchMessage>, Receiver<StitchMessage>);
-
     fn local_addr(&self) -> SocketAddr;
     fn peer_addr(&self) -> SocketAddr;
 
+    fn registry(&self) -> StitchRegistry;
+    fn stream_writer_chan(&self) -> (Sender<StitchMessage>, Receiver<StitchMessage>);
+
+    fn read_task(&self) -> &JoinHandle<anyhow::Result<()>>;
+    fn write_task(&self) -> &JoinHandle<anyhow::Result<()>>;
+
+    fn read_readiness(&self) -> Arc<(Mutex<bool>, Condvar)>;
+    fn write_readiness(&self) -> Arc<(Mutex<bool>, Condvar)>;
+    fn is_ready(&self) -> bool;
     fn close(self);
 
     fn get_key_from_type<
@@ -73,12 +80,14 @@ pub trait StitchClient {
         &self,
         cap: Option<usize>,
     ) -> (Sender<T>, Receiver<T>) {
+        let tid_hash: StitchRegistryKey = StitchMessage::hash_type::<T>();
+
         if let Ok(chan) = self.get_channel::<T>() {
             debug!("Returning already registered channel");
             return chan;
+        } else {
+            debug!("Creating entry for type-id {} in the registry", tid_hash)
         }
-
-        let tid_hash: StitchRegistryKey = StitchMessage::hash_type::<T>();
 
         let (serializer_sender, serializer_receiver): (Sender<T>, Receiver<T>) =
             channel_factory(cap);
@@ -106,6 +115,36 @@ pub trait StitchClient {
 
         return (serializer_sender, user_receiver);
     }
+
+    fn ready(&self) -> anyhow::Result<()> {
+        debug!("Attempting to ready connection");
+
+        let (read_ready, read_cvar) = &*self.read_readiness();
+        let mut read_ready_handle = task::block_on(read_ready.lock());
+
+        if *read_ready_handle == true {
+            warn!("Service already in `ready` state despite call");
+            return Ok(());
+        }
+
+        *read_ready_handle = true;
+        read_cvar.notify_all();
+        drop(read_ready_handle);
+
+        let (write_ready, write_cvar) = &*self.write_readiness();
+        let mut write_ready_handle = task::block_on(write_ready.lock());
+        *write_ready_handle = true;
+        write_cvar.notify_all();
+        drop(write_ready_handle);
+
+        info!(
+            "Notified waiting read ({}) and write ({}) tasks of ready state",
+            self.read_task().task().id(),
+            self.write_task().task().id()
+        );
+
+        Ok(())
+    }
 }
 
 pub struct StitchNetClient {
@@ -113,11 +152,21 @@ pub struct StitchNetClient {
     peer_addr: SocketAddr,
     registry: StitchRegistry,
     stream_writer_chan: (Sender<StitchMessage>, Receiver<StitchMessage>),
+    read_readiness: Arc<(Mutex<bool>, Condvar)>,
+    write_readiness: Arc<(Mutex<bool>, Condvar)>,
     read_task: task::JoinHandle<anyhow::Result<()>>,
     write_task: task::JoinHandle<anyhow::Result<()>>,
 }
 
 impl StitchClient for StitchNetClient {
+    fn local_addr(&self) -> SocketAddr {
+        self.local_addr
+    }
+
+    fn peer_addr(&self) -> SocketAddr {
+        self.peer_addr
+    }
+
     fn registry(&self) -> StitchRegistry {
         self.registry.clone()
     }
@@ -129,12 +178,26 @@ impl StitchClient for StitchNetClient {
         )
     }
 
-    fn local_addr(&self) -> SocketAddr {
-        self.local_addr
+    fn read_task(&self) -> &JoinHandle<anyhow::Result<()>> {
+        &self.read_task
     }
 
-    fn peer_addr(&self) -> SocketAddr {
-        self.peer_addr
+    fn write_task(&self) -> &JoinHandle<anyhow::Result<()>> {
+        &self.write_task
+    }
+
+    fn read_readiness(&self) -> Arc<(Mutex<bool>, Condvar)> {
+        self.read_readiness.clone()
+    }
+
+    fn write_readiness(&self) -> Arc<(Mutex<bool>, Condvar)> {
+        self.write_readiness.clone()
+    }
+
+    fn is_ready(&self) -> bool {
+        let (ready, _) = &*self.read_readiness;
+        let handle = task::block_on(ready.lock());
+        *handle
     }
 
     fn close(self) {

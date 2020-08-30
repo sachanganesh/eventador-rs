@@ -1,7 +1,6 @@
 use log::*;
 use std::env;
 use stitch_channel::net::{StitchClient, StitchNetClient};
-use stitch_channel::Sender;
 
 #[async_std::main]
 async fn main() -> anyhow::Result<()> {
@@ -18,10 +17,13 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // create a client connection to the server
-    let dist_chan = StitchNetClient::tcp_client(ip_address)?;
+    let conn = StitchNetClient::tcp_client(ip_address)?;
 
     // create a channel for String messages on the TCP connection
-    let (sender, receiver) = dist_chan.bounded::<String>(Some(100));
+    let (sender, receiver) = conn.bounded::<String>(Some(100));
+
+    // alert the connection that you are ready to read and write messages
+    conn.ready()?;
 
     // send a message to the server
     let msg = String::from("Hello world");

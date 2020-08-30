@@ -52,11 +52,11 @@ async fn handle_server_connections<'a>(
 ) -> anyhow::Result<()> {
     let mut conns = input.incoming();
 
+    debug!("Reading from the stream of incoming connections");
     loop {
-        debug!("Reading from the stream of incoming connections");
         match conns.next().await {
             Some(Ok(read_stream)) => {
-                debug!(
+                info!(
                     "Received connection attempt from {}",
                     read_stream.peer_addr()?
                 );
@@ -68,16 +68,21 @@ async fn handle_server_connections<'a>(
                     channel_factory(cap),
                 ) {
                     Ok(client) => {
-                        info!("Accepted a connection from {}", addr);
+                        debug!("Attempting to register connection from {}", addr);
 
                         let client = Arc::new(client);
                         registry.insert(client.peer_addr(), client.clone());
+                        debug!("Registered client connection for {} in server registry", addr);
 
                         if let Err(err) = output.send(client).await {
-                            warn!(
-                                "Could not send accepted TCP client connection to channel: {:#?}",
+                            error!(
+                                "Stopping the server accept loop - could not send accepted TCP client connection to channel: {:#?}",
                                 err
-                            )
+                            );
+
+                            break Err(anyhow::Error::from(err))
+                        } else {
+                            info!("Accepted connection from {}", addr);
                         }
                     }
 
@@ -92,7 +97,14 @@ async fn handle_server_connections<'a>(
                 "Encountered error when accepting TCP connection: {:#?}",
                 err
             ),
-            None => unreachable!(),
+
+            None => {
+                warn!(
+                    "Stopping the server accept loop - unable to accept any more connections"
+                );
+
+                break Ok(())
+            },
         }
     }
 }

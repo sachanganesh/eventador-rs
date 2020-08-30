@@ -2,6 +2,7 @@ use crate::net::registry::{StitchRegistry, StitchRegistryKey};
 use crate::StitchMessage;
 use async_channel::{Receiver, Sender};
 use async_std::prelude::*;
+use async_std::sync::{Arc, Condvar, Mutex};
 use bytes::{Buf, BytesMut};
 use futures_util::io::{AsyncRead, AsyncWrite};
 use log::*;
@@ -14,28 +15,35 @@ const BUFFER_SIZE: usize = 8192;
 pub(crate) async fn read_from_stream<R>(
     registry: StitchRegistry,
     mut input: R,
+    readiness: Arc<(Mutex<bool>, Condvar)>,
 ) -> anyhow::Result<()>
 where
     R: AsyncRead + std::marker::Unpin,
 {
     use std::convert::TryInto;
 
+    let (lock, cvar) = &*readiness;
+    let mut ready = lock.lock().await;
+    while !*ready {
+        ready = cvar.wait(ready).await;
+    }
+
     let mut buffer = BytesMut::new();
     buffer.resize(BUFFER_SIZE, 0);
 
     let mut pending: Option<BytesMut> = None;
 
-    debug!("Starting read loop for TCP connection");
+    debug!("Starting read loop for the network connection");
     loop {
         trace!("Reading from the stream");
         match input.read(&mut buffer).await {
             Ok(mut bytes_read_raw) => {
                 if bytes_read_raw > 0 {
-                    debug!("Read {} bytes from TCP stream", bytes_read_raw)
+                    debug!("Read {} bytes from the network stream", bytes_read_raw)
                 }
 
                 if let Some(mut pending_buf) = pending.take() {
-                    debug!("Prepending broken data ({} bytes) encountered from earlier read of TCP stream", pending_buf.len());
+                    debug!("Prepending broken data ({} bytes) encountered from earlier read of network stream", pending_buf.len());
                     bytes_read_raw += pending_buf.len();
 
                     pending_buf.unsplit(buffer);
@@ -44,7 +52,7 @@ where
 
                 let mut bytes_read: u64 = bytes_read_raw.try_into()?;
                 while bytes_read > 0 {
-                    debug!("{} bytes from TCP stream still unprocessed", bytes_read);
+                    debug!("{} bytes from network stream still unprocessed", bytes_read);
 
                     let buf_read = Cursor::new(buffer.as_ref());
                     let mut decoder = decode::Deserializer::new(buf_read);
@@ -70,7 +78,7 @@ where
 
                                     debug!("Sending deserialized data to channel");
                                     if let Err(err) = sender.send(data).await {
-                                        error!("Encountered error while sending data to channel from TCP stream: {:#?}", err);
+                                        error!("Encountered error while sending data to channel from network stream: {:#?}", err);
                                         return Err(anyhow::Error::from(err));
                                     }
                                 }
@@ -91,7 +99,10 @@ where
                         }
 
                         Err(err) => {
-                            warn!("Could not deserialize data from TCP connection: {:#?}", err);
+                            warn!(
+                                "Could not deserialize data from the network connection: {:#?}",
+                                err
+                            );
                             pending = Some(buffer);
                             buffer = BytesMut::new();
                             break;
@@ -107,12 +118,22 @@ where
     }
 }
 
-pub(crate) async fn write_to_stream<T, W>(input: Receiver<T>, mut output: W) -> anyhow::Result<()>
+pub(crate) async fn write_to_stream<T, W>(
+    input: Receiver<T>,
+    mut output: W,
+    readiness: Arc<(Mutex<bool>, Condvar)>,
+) -> anyhow::Result<()>
 where
     T: 'static + serde::ser::Serialize,
     W: AsyncWrite + std::marker::Unpin,
 {
-    debug!("Starting write loop for TCP connection");
+    let (lock, cvar) = &*readiness;
+    let mut ready = lock.lock().await;
+    while !*ready {
+        ready = cvar.wait(ready).await;
+    }
+
+    debug!("Starting write loop for the network connection");
     loop {
         trace!("Waiting for writable data that will be sent to the stream");
         match input.recv().await {
@@ -124,11 +145,11 @@ where
                 match msg.serialize(&mut serializer) {
                     Ok(_) => match output.write_all(buffer.as_slice()).await {
                         Ok(_) => {
-                            debug!("Wrote {} bytes to TCP stream", buffer.len());
+                            debug!("Wrote {} bytes to network stream", buffer.len());
                             output.flush().await?;
                         }
 
-                        Err(err) => error!("Could not write data to TCP stream: {}", err),
+                        Err(err) => error!("Could not write data to network stream: {}", err),
                     },
 
                     Err(err) => {

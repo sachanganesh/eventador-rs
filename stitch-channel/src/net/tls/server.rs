@@ -5,7 +5,7 @@ use async_channel::{Receiver, Sender};
 use async_std::io::*;
 use async_std::net::*;
 use async_std::prelude::*;
-use async_std::sync::Arc;
+use async_std::sync::{Arc, Condvar, Mutex};
 use async_std::task;
 use async_tls::TlsAcceptor;
 use dashmap::DashMap;
@@ -59,8 +59,8 @@ async fn handle_server_connections<'a>(
 ) -> anyhow::Result<()> {
     let mut conns = input.incoming();
 
+    debug!("Reading from the stream of incoming connections");
     loop {
-        debug!("Reading from the stream of incoming connections");
         match conns.next().await {
             Some(Ok(tcp_stream)) => {
                 let local_addr = tcp_stream.local_addr()?;
@@ -69,52 +69,66 @@ async fn handle_server_connections<'a>(
                 debug!("Received connection attempt from {}", peer_addr);
 
                 let tls_stream = acceptor.accept(tcp_stream).await?;
-                info!("Accepted a connection from {}", peer_addr);
 
                 let (read_stream, write_stream) = tls_stream.split();
                 let (tls_write_sender, tls_write_receiver) = channel_factory(cap);
 
                 let client_registry: StitchRegistry = crate::net::registry::new();
+                let read_readiness = Arc::new((Mutex::new(false), Condvar::new()));
+                let write_readiness = Arc::new((Mutex::new(false), Condvar::new()));
 
                 let read_task = task::spawn(crate::net::tasks::read_from_stream(
                     client_registry.clone(),
                     read_stream,
+                    read_readiness.clone(),
                 ));
+
                 let write_task = task::spawn(crate::net::tasks::write_to_stream(
                     tls_write_receiver.clone(),
                     write_stream,
+                    write_readiness.clone(),
                 ));
-                info!(
-                    "Running serialize ({}) and deserialize ({}) tasks",
-                    read_task.task().id(),
-                    write_task.task().id()
-                );
 
                 let conn = StitchNetClient {
                     local_addr,
                     peer_addr,
                     registry: client_registry,
+                    stream_writer_chan: (tls_write_sender, tls_write_receiver),
+                    read_readiness,
+                    write_readiness,
                     read_task,
                     write_task,
-                    stream_writer_chan: (tls_write_sender, tls_write_receiver),
                 };
 
+                debug!("Attempting to register connection from {}", peer_addr);
                 let conn = Arc::new(conn);
                 registry.insert(conn.peer_addr(), conn.clone());
+                debug!("Registered client connection for {} in server registry", peer_addr);
 
                 if let Err(err) = output.send(conn).await {
-                    warn!(
-                        "Could not send accepted TCP client connection to channel: {:#?}",
+                    error!(
+                        "Stopping the server accept loop - could not send accepted TLS client connection to channel: {:#?}",
                         err
-                    )
+                    );
+
+                    break Err(anyhow::Error::from(err))
+                } else {
+                    info!("Accepted connection from {}", peer_addr);
                 }
             }
 
             Some(Err(err)) => error!(
-                "Encountered error when accepting TCP connection: {:#?}",
+                "Encountered error when accepting TLS connection: {:#?}",
                 err
             ),
-            None => error!("Could not receive incoming connections on the stream"),
+
+            None => {
+                warn!(
+                    "Stopping the server accept loop - unable to accept any more connections"
+                );
+
+                break Ok(())
+            },
         }
     }
 }

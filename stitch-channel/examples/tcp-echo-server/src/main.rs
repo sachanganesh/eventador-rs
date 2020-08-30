@@ -23,17 +23,15 @@ async fn main() -> anyhow::Result<()> {
     let (_server, conns) = StitchNetServer::tcp_server(ip_address)?;
 
     // handle server connections
-    Ok(echo_server(conns).await)
-}
-
-async fn echo_server(connections: Receiver<Arc<StitchNetClient>>) {
     // wait for a connection to come in and be accepted
-    for conn in connections.recv().await {
+    while let Ok(conn) = conns.recv().await {
+        info!("Handling connection from {}", conn.peer_addr());
+
         // register for String-typed messages
         let (sender, receiver) = conn.unbounded::<String>();
 
         // handle String messages
-        task::spawn(async move {
+        let _handle = task::spawn(async move {
             // for every String message
             while let Ok(msg) = receiver.recv().await {
                 info!("Echoing message: {}", msg);
@@ -45,7 +43,11 @@ async fn echo_server(connections: Receiver<Arc<StitchNetClient>>) {
                     error!("Could not echo message: {:#?}", err);
                 }
             }
-        })
-        .await;
+        });
+
+        // let the connection know you are ready to send and receive messages
+        conn.ready().expect("could not ready the connection for reading and writing");
     }
+
+    Ok(())
 }

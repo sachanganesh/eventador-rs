@@ -9,6 +9,8 @@ members = [
     "stitch-channel",
     "stitch-channel/examples/tcp-echo-server",
     "stitch-channel/examples/tcp-client",
+    "stitch-channel/examples/tls-echo-server",
+    "stitch-channel/examples/tls-client",
 ]
 
 [dependencies]
