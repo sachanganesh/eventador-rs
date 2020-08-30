@@ -697,6 +697,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "seam-channel"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-channel",
+ "async-std",
+ "async-tls",
+ "async-trait",
+ "bytes",
+ "dashmap",
+ "futures-core",
+ "futures-util",
+ "log",
+ "rmp-serde",
+ "rustls",
+ "serde",
+]
+
+[[package]]
+name = "seam-rs"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-channel",
+ "async-std",
+ "env_logger",
+ "log",
+ "seam-channel",
+ "uuid",
+]
+
+[[package]]
 name = "send_wrapper"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -769,38 +801,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
-name = "stitch-channel"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-channel",
- "async-std",
- "async-tls",
- "async-trait",
- "bytes",
- "dashmap",
- "futures-core",
- "futures-util",
- "log",
- "rmp-serde",
- "rustls",
- "serde",
-]
-
-[[package]]
-name = "stitch-rs"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-channel",
- "async-std",
- "env_logger",
- "log",
- "stitch-channel",
- "uuid",
-]
-
-[[package]]
 name = "syn"
 version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -819,7 +819,7 @@ dependencies = [
  "async-std",
  "env_logger",
  "log",
- "stitch-channel",
+ "seam-channel",
 ]
 
 [[package]]
@@ -830,7 +830,7 @@ dependencies = [
  "async-std",
  "env_logger",
  "log",
- "stitch-channel",
+ "seam-channel",
 ]
 
 [[package]]
@@ -859,7 +859,7 @@ dependencies = [
  "async-std",
  "env_logger",
  "log",
- "stitch-channel",
+ "seam-channel",
 ]
 
 [[package]]
@@ -870,7 +870,7 @@ dependencies = [
  "async-std",
  "env_logger",
  "log",
- "stitch-channel",
+ "seam-channel",
 ]
 
 [[package]]

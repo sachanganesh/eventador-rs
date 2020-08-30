@@ -1,16 +1,16 @@
 [package]
-name = "stitch-rs"
+name = "seam-rs"
 version = "0.1.0"
 authors = ["Sachandhan Ganesh <sachan.ganesh@gmail.com>"]
 edition = "2018"
 
 [workspace]
 members = [
-    "stitch-channel",
-    "stitch-channel/examples/tcp-echo-server",
-    "stitch-channel/examples/tcp-client",
-    "stitch-channel/examples/tls-echo-server",
-    "stitch-channel/examples/tls-client",
+    "seam-channel",
+    "seam-channel/examples/tcp-echo-server",
+    "seam-channel/examples/tcp-client",
+    "seam-channel/examples/tls-echo-server",
+    "seam-channel/examples/tls-client",
 ]
 
 [dependencies]
@@ -21,4 +21,4 @@ env_logger = "0.7"
 log = "0.4"
 uuid = { version = "0.8.1", features = ["serde", "v4"] }
 
-stitch-channel = { path = "stitch-channel" }
+seam-channel = { path = "seam-channel" }

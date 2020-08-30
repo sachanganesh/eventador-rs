@@ -1,12 +1,11 @@
 use async_std::{io, task};
 use log::*;
+use seam_channel::net::tls::rustls::internal::pemfile::{certs, rsa_private_keys};
+use seam_channel::net::tls::rustls::{NoClientAuth, ServerConfig};
+use seam_channel::net::{StitchClient, StitchNetServer};
 use std::env;
 use std::fs::File;
 use std::io::BufReader;
-use stitch_channel::net::tls::rustls::internal::pemfile::{certs, rsa_private_keys};
-use stitch_channel::net::tls::rustls::{NoClientAuth, ServerConfig};
-use stitch_channel::net::{StitchClient, StitchNetClient, StitchNetServer};
-use stitch_channel::{Arc, Receiver};
 
 #[async_std::main]
 async fn main() -> anyhow::Result<()> {
@@ -38,7 +37,8 @@ async fn main() -> anyhow::Result<()> {
         let (sender, receiver) = conn.unbounded::<String>();
 
         // let the connection know you are ready to send and receive messages
-        conn.ready().expect("could not ready the connection for reading and writing");
+        conn.ready()
+            .expect("could not ready the connection for reading and writing");
 
         // handle String messages
         task::spawn(async move {
@@ -86,6 +86,9 @@ fn parse_args() -> (String, String, String) {
         }
     };
 
-    (ip_address.to_string(), cert_path.to_string(), key_path.to_string())
+    (
+        ip_address.to_string(),
+        cert_path.to_string(),
+        key_path.to_string(),
+    )
 }
-

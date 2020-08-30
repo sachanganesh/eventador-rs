@@ -1,7 +1,7 @@
 use log::*;
+use seam_channel::net::tls::rustls::ClientConfig;
+use seam_channel::net::{StitchClient, StitchNetClient};
 use std::env;
-use stitch_channel::net::tls::rustls::ClientConfig;
-use stitch_channel::net::{StitchClient, StitchNetClient};
 
 #[async_std::main]
 async fn main() -> anyhow::Result<()> {
@@ -70,5 +70,9 @@ fn parse_args() -> (String, String, String) {
         }
     };
 
-    (ip_address.to_string(), domain.to_string(), cafile_path.to_string())
+    (
+        ip_address.to_string(),
+        domain.to_string(),
+        cafile_path.to_string(),
+    )
 }

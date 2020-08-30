@@ -197,7 +197,7 @@ where
                         error!("Could not send {} message: {}", tid_hash, err);
                         return Err(anyhow::Error::from(err));
                     } else {
-                        debug!("Sent serialized {} data to stitch-channel", tid_hash);
+                        debug!("Sent serialized {} data to seam-channel", tid_hash);
                     }
                 }
             }
@@ -221,7 +221,7 @@ where
         match input.recv().await {
             Ok(msg) => {
                 debug!(
-                    "Received message from stitch-channel to be deserialized to {}",
+                    "Received message from seam-channel to be deserialized to {}",
                     tid_hash
                 );
 

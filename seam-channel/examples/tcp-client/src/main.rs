@@ -1,6 +1,6 @@
 use log::*;
+use seam_channel::net::{StitchClient, StitchNetClient};
 use std::env;
-use stitch_channel::net::{StitchClient, StitchNetClient};
 
 #[async_std::main]
 async fn main() -> anyhow::Result<()> {

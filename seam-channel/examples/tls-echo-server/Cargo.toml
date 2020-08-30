@@ -1,5 +1,5 @@
 [package]
-name = "tls-client"
+name = "tls-echo-server"
 version = "0.1.0"
 authors = ["Sachandhan Ganesh <sachan.ganesh@gmail.com>"]
 edition = "2018"
@@ -12,4 +12,4 @@ async-std = { version = "1.6.2", features = ["attributes"] }
 env_logger = "0.7"
 log = "0.4"
 
-stitch-channel = { path = "../../" }
+seam-channel = { path = "../../" }

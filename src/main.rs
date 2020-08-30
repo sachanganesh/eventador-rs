@@ -4,14 +4,14 @@ use std::{fs::File, io::BufReader};
 use uuid::Uuid;
 
 use async_std::sync::Arc;
-use stitch_channel::net::tls::rustls::internal::pemfile::{certs, rsa_private_keys};
-use stitch_channel::net::tls::rustls::{ClientConfig, NoClientAuth, ServerConfig};
-use stitch_channel::net::*;
+use seam_channel::net::tls::rustls::internal::pemfile::{certs, rsa_private_keys};
+use seam_channel::net::tls::rustls::{ClientConfig, NoClientAuth, ServerConfig};
+use seam_channel::net::*;
 
 #[macro_use]
 extern crate log;
 
-const MAX_MESSAGES: usize = 1;
+const MAX_MESSAGES: usize = 150;
 const DOMAIN: &str = "localhost";
 const IP_ADDR: &str = "localhost:5678";
 
@@ -19,8 +19,8 @@ const IP_ADDR: &str = "localhost:5678";
 async fn main() -> Result<(), anyhow::Error> {
     env_logger::init();
 
-    let dist_chan = test_tcp()?;
-    // let dist_chan = test_tls()?;
+    // let dist_chan = test_tcp()?;
+    let dist_chan = test_tls()?;
 
     let (sender, receiver) = dist_chan.unbounded();
 

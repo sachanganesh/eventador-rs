@@ -72,7 +72,10 @@ async fn handle_server_connections<'a>(
 
                         let client = Arc::new(client);
                         registry.insert(client.peer_addr(), client.clone());
-                        debug!("Registered client connection for {} in server registry", addr);
+                        debug!(
+                            "Registered client connection for {} in server registry",
+                            addr
+                        );
 
                         if let Err(err) = output.send(client).await {
                             error!(
@@ -80,7 +83,7 @@ async fn handle_server_connections<'a>(
                                 err
                             );
 
-                            break Err(anyhow::Error::from(err))
+                            break Err(anyhow::Error::from(err));
                         } else {
                             info!("Accepted connection from {}", addr);
                         }
@@ -99,12 +102,10 @@ async fn handle_server_connections<'a>(
             ),
 
             None => {
-                warn!(
-                    "Stopping the server accept loop - unable to accept any more connections"
-                );
+                warn!("Stopping the server accept loop - unable to accept any more connections");
 
-                break Ok(())
-            },
+                break Ok(());
+            }
         }
     }
 }

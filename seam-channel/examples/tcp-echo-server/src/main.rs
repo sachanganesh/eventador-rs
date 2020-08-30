@@ -1,8 +1,7 @@
 use async_std::task;
 use log::*;
+use seam_channel::net::{StitchClient, StitchNetServer};
 use std::env;
-use stitch_channel::net::{StitchClient, StitchNetClient, StitchNetServer};
-use stitch_channel::{Arc, Receiver};
 
 #[async_std::main]
 async fn main() -> anyhow::Result<()> {
@@ -46,7 +45,8 @@ async fn main() -> anyhow::Result<()> {
         });
 
         // let the connection know you are ready to send and receive messages
-        conn.ready().expect("could not ready the connection for reading and writing");
+        conn.ready()
+            .expect("could not ready the connection for reading and writing");
     }
 
     Ok(())
