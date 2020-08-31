@@ -4,7 +4,28 @@ This crate provides a message queue abstraction over traditional network I/O.
 
 By using a message queue, crate users can focus on sending and receiving messages between computers instead of low-level networking and failure recovery.
 
-## Roadmap
+## Future Goals
 
-- Allow users to specify their own serialization/deserialization formats
-- Allow users to configure handling of non-registered (unexpected) message types
+- Custom serialization/deserialization
+- Configurable policies for handling of non-registered (unexpected) message types
+
+## Feature Status
+
+| Feature                                             	| Status 	|
+|-----------------------------------------------------	|--------	|
+| [TCP Client](seam-channel/examples/tcp-client)      	|    ✓   	|
+| [TCP Server](seam-channel/examples/tcp-echo-server) 	|    ✓   	|
+| UDP Client                                          	|        	|
+| UDP Server                                          	|        	|
+| [TLS Client](seam-channel/examples/tls-client)      	|    ✓   	|
+| [TCP Server](seam-channel/examples/tls-echo-server) 	|    ✓   	|
+| QUIC Client                                         	|        	|
+| QUIC Server                                         	|        	|
+| SCTP Client                                         	|        	|
+| SCTP Server                                         	|        	|
+| DTLS-SCTP Client                                    	|        	|
+| DTLS-SCTP Server                                    	|        	|
+| Kafka Client                                        	|        	|
+| RMQ Client                                          	|        	|
+| SQS Client                                          	|        	|
+| NSQ Client                                          	|        	|
