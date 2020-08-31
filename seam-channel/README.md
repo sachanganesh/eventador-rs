@@ -13,12 +13,12 @@ By using a message queue, crate users can focus on sending and receiving message
 
 | Feature                                             	| Status 	|
 |-----------------------------------------------------	|--------	|
-| [TCP Client](seam-channel/examples/tcp-client)      	|    ✓   	|
-| [TCP Server](seam-channel/examples/tcp-echo-server) 	|    ✓   	|
+| [TCP Client](examples/tcp-client)      	            |    ✓   	|
+| [TCP Server](examples/tcp-echo-server) 	            |    ✓   	|
 | UDP Client                                          	|        	|
 | UDP Server                                          	|        	|
-| [TLS Client](seam-channel/examples/tls-client)      	|    ✓   	|
-| [TCP Server](seam-channel/examples/tls-echo-server) 	|    ✓   	|
+| [TLS Client](examples/tls-client)      	            |    ✓   	|
+| [TCP Server](examples/tls-echo-server) 	            |    ✓   	|
 | QUIC Client                                         	|        	|
 | QUIC Server                                         	|        	|
 | SCTP Client                                         	|        	|
