@@ -7,10 +7,7 @@ edition = "2018"
 [workspace]
 members = [
     "seam-channel",
-    "seam-channel/examples/tcp-echo-server",
-    "seam-channel/examples/tcp-client",
-    "seam-channel/examples/tls-echo-server",
-    "seam-channel/examples/tls-client",
+    "seam-channel/examples/*"
 ]
 
 [dependencies]
