@@ -19,5 +19,5 @@ cargo run <ip-address-to-bind-to> <cert-file> <key-file>
 
 ```
 export RUST_LOG=info
-cargo run 127.0.0.1:5678 ../tls-client/end.cert ../tls-client/end.rsa
+cargo run 127.0.0.1:5678 end.cert end.rsa
 ```
