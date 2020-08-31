@@ -716,6 +716,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "seam-partition"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "async-std",
+ "seam-channel",
+]
+
+[[package]]
 name = "seam-rs"
 version = "0.0.1"
 dependencies = [

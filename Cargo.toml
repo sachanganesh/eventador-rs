@@ -7,7 +7,8 @@ edition = "2018"
 [workspace]
 members = [
     "seam-channel",
-    "seam-channel/examples/*"
+    "seam-channel/examples/*",
+    "seam-partition",
 ]
 
 [dependencies]

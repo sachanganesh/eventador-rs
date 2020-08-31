@@ -34,7 +34,7 @@ async fn main() -> Result<(), anyhow::Error> {
 }
 
 fn test_tcp() -> Result<StitchNetClient, anyhow::Error> {
-    let (server, conns) = StitchNetServer::tcp_server(IP_ADDR).expect("server doesn't work");
+    let (_server, conns) = StitchNetServer::tcp_server(IP_ADDR).expect("server doesn't work");
     let _handle = task::spawn(echo_server(conns));
 
     Ok(StitchNetClient::tcp_client(IP_ADDR)?)

@@ -1,13 +1,25 @@
 # seam-channel
 
-This crate provides a message queue abstraction over traditional network I/O.
+This crate provides a distributed message queue abstraction over network streams, Kafka, SQS, etc.
 
 By using a message queue, crate users can focus on sending and receiving messages between computers instead of low-level networking and failure recovery.
 
+## Here be Dragons
+
+This crate uses the `std::Any::TypeId` structure to map incoming messages to their appropriate Rust and user-defined message types. This is because Rust does not have convenient run-time type inferences utilities at the time of writing.
+
+The `TypeId` has a severe limitation in that the value may differ between different compiler versions. Thus, a server program compiled on v1.44.0 may not be able to handle messages sent from a client program compiled on v1.45.0.
+
+Please keep this limitation in mind when building binaries that depend on this crate. In the future, this dependency on `TypeId` will hopefully be resolved, and a stable API presented instead.
+
 ## Future Goals
 
+- Documentation
+- Stable TypeId evaluation
 - Custom serialization/deserialization
 - Configurable policies for handling of non-registered (unexpected) message types
+- Testing
+- Benchmarking
 
 ## Feature Status
 
