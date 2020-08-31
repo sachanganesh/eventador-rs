@@ -6,9 +6,9 @@ This crate provides tools for building reliable, fault-tolerant, distributed sys
 
 Seam-rs utilities make "stitching" together computers together in a distributed system simple, reliable, and robust.
 
-All sub-modules are heavily reliant on the `async-std` crate and its runtime. This dependency may be removed in the future, but definitely not anytime soon.
-
 <hr>
+
+All sub-modules are heavily reliant on the `async-std` crate and its runtime. This dependency may be removed in the future, but definitely not anytime soon.
 
 - **[seam-channel](seam-channel)**: distributed message queue abstraction over network streams, Kafka, SQS, etc.
 
