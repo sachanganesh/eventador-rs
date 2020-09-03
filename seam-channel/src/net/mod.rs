@@ -218,6 +218,7 @@ pub trait StitchServer {
     fn close(self);
 }
 
+#[allow(dead_code)]
 pub struct StitchNetServer {
     registry: ServerRegistry,
     connections_chan: (Sender<Arc<StitchNetClient>>, Receiver<Arc<StitchNetClient>>),

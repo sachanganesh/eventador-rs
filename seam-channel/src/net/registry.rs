@@ -15,6 +15,8 @@ pub fn new() -> StitchRegistry {
 pub type StitchRegistryKey = u64;
 
 type GenericChannelEndpoint = Box<dyn Any + Send + Sync>;
+
+#[allow(dead_code)]
 pub struct StitchRegistryEntry {
     serializer_sender: GenericChannelEndpoint,
     serializer_receiver: GenericChannelEndpoint,
