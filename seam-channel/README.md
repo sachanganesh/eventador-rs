@@ -16,6 +16,7 @@ Please keep this limitation in mind when building binaries that depend on this c
 
 - Documentation
 - Stable TypeId evaluation
+- Connection pool (+ accounting for ordering of messages)
 - Custom serialization/deserialization
 - Configurable policies for handling of non-registered (unexpected) message types
 - Testing
