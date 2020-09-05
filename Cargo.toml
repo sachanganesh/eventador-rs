@@ -8,6 +8,7 @@ edition = "2018"
 members = [
     "seam-channel",
     "seam-channel/examples/*",
+    "seam-disruptor",
 ]
 
 [dependencies]

@@ -716,6 +716,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "seam-disruptor"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-channel",
+ "async-std",
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "seam-rs"
 version = "0.0.1"
 dependencies = [
