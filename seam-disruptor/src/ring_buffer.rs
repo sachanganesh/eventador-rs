@@ -1,21 +1,25 @@
-use async_channel::{Sender, Receiver, unbounded};
 use async_std::sync::Arc;
 use crate::sequencer::Sequencer;
-use crate::event::Event;
-use crate::subscriber::Subscriber;
+use crate::event::EventStore;
 
 pub struct RingBuffer {
     capacity: u64,
-    buffer: Vec<Arc<Event>>,
+    buffer: Vec<Arc<EventStore>>,
     sequencer: Arc<Sequencer>
 }
 
 impl RingBuffer {
     pub fn new(capacity: u64, sequencer: Arc<Sequencer>) -> anyhow::Result<Self> {
         if capacity > 1 && capacity.is_power_of_two() {
+            let ucapacity = capacity as usize;
+            let mut buffer = Vec::with_capacity(ucapacity);
+            for i in 0..ucapacity {
+                buffer.insert(i, Arc::new(EventStore::new()))
+            }
+
             Ok(Self {
                 capacity,
-                buffer: Vec::with_capacity(capacity as usize), // @todo explore cache line optimization with padding
+                buffer, // @todo explore cache line optimization with padding
                 sequencer,
             })
         } else {
@@ -23,26 +27,25 @@ impl RingBuffer {
         }
     }
 
-    pub fn get<T>(&self, sequence: u64) -> Option<Arc<Event>> {
+    pub async fn next(&self) -> u64 {
+        self.sequencer.next().await
+    }
+
+    pub fn get(&self, sequence: u64) -> Arc<EventStore> {
         let idx = sequence & (self.capacity - 1);
 
         if let Some(event) = self.buffer.get(idx as usize) {
-            if event.sequence() == sequence {
-                return Some(event.clone())
-            }
+            return event.clone()
         }
 
-        return None
+        unreachable!()
     }
 
-    pub fn publish<T: 'static + Send + Sync>(&self, message: T) {
-        // @todo insert into data store
-        let sequence = self.sequencer.next();
-        self.sequencer.publish(sequence)
-    }
+    pub async fn publish<T: 'static + Send + Sync>(&self, message: T) {
+        let sequence = self.sequencer.next().await;
 
-    pub fn subscribe<T: 'static + Send + Sync>(&self) -> Subscriber<T> {
-        Subscriber::new(0, self.sequencer.clone(), unbounded())
+        let event_store = self.get(sequence);
+        event_store.overwrite(message);
     }
 }
 
