@@ -1,6 +1,6 @@
 [package]
 name = "seam-disruptor"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Sachandhan Ganesh <sachan.ganesh@gmail.com>"]
 edition = "2018"
 
@@ -10,4 +10,5 @@ edition = "2018"
 anyhow = "1.0"
 async-channel = "1.4"
 async-std = { version = "1.6" }
+crossbeam-epoch = "0.8.2"
 crossbeam-utils = "0.7.2"

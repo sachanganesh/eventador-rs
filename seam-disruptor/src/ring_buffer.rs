@@ -1,11 +1,11 @@
-use async_std::sync::Arc;
+use crate::event::EventEnvelope;
 use crate::sequencer::Sequencer;
-use crate::event::EventStore;
+use async_std::sync::Arc;
 
 pub struct RingBuffer {
     capacity: u64,
-    buffer: Vec<Arc<EventStore>>,
-    sequencer: Arc<Sequencer>
+    buffer: Vec<Arc<EventEnvelope>>,
+    sequencer: Arc<Sequencer>,
 }
 
 impl RingBuffer {
@@ -14,7 +14,7 @@ impl RingBuffer {
             let ucapacity = capacity as usize;
             let mut buffer = Vec::with_capacity(ucapacity);
             for i in 0..ucapacity {
-                buffer.insert(i, Arc::new(EventStore::new()))
+                buffer.insert(i, Arc::new(EventEnvelope::new()))
             }
 
             Ok(Self {
@@ -31,11 +31,11 @@ impl RingBuffer {
         self.sequencer.next().await
     }
 
-    pub fn get(&self, sequence: u64) -> Arc<EventStore> {
+    pub fn get(&self, sequence: u64) -> Arc<EventEnvelope> {
         let idx = sequence & (self.capacity - 1);
 
         if let Some(event) = self.buffer.get(idx as usize) {
-            return event.clone()
+            return event.clone();
         }
 
         unreachable!()
@@ -51,9 +51,9 @@ impl RingBuffer {
 
 #[cfg(test)]
 mod tests {
-    use async_std::sync::Arc;
     use crate::ring_buffer::RingBuffer;
     use crate::sequencer::Sequencer;
+    use async_std::sync::Arc;
 
     #[test]
     fn error_if_not_power_of_two() {
