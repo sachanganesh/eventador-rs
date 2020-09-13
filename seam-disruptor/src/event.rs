@@ -113,9 +113,7 @@ mod tests {
     #[test]
     fn event_overwrite() {
         let e = EventEnvelope::new();
-
-        let msg = String::from("Hello world!");
-        e.overwrite(msg);
+        e.overwrite(String::from("Hello world!"));
 
         let readable_event = unsafe { e.read::<String>() };
         assert!(readable_event.is_some());
@@ -125,5 +123,18 @@ mod tests {
 
         assert!(expected_msg.eq(read_msg));
         assert_eq!(1, e.read_count());
+
+        e.overwrite(String::from("Bye Felicia!"));
+
+        let another_readable_event = unsafe { e.read::<String>() };
+        assert!(another_readable_event.is_some());
+
+        let another_read_msg = &*another_readable_event.unwrap();
+        let another_expected_msg = String::from("Bye Felicia!");
+
+        assert!(another_expected_msg.eq(another_read_msg));
+        assert_eq!(1, e.read_count());
+
+        assert!(expected_msg.eq(read_msg));
     }
 }
