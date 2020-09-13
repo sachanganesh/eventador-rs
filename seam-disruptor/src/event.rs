@@ -1,16 +1,12 @@
-use crossbeam_epoch::{pin, Atomic, Guard, Owned, Shared};
+use crossbeam_epoch::{pin, Atomic, Guard, Owned};
 use std::any::{Any, TypeId};
 use std::ops::Deref;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+#[derive(Debug)]
 pub struct Event {
     pub type_id: TypeId,
     pub data: Box<dyn Any>,
-}
-
-pub struct EventEnvelope {
-    read_count: AtomicU64,
-    event: Atomic<Event>,
 }
 
 pub struct EventRead<'a, T: 'a> {
@@ -27,6 +23,11 @@ impl<'a, T> Deref for EventRead<'a, T> {
     }
 }
 
+pub struct EventEnvelope {
+    read_count: AtomicU64,
+    event: Atomic<Event>,
+}
+
 impl EventEnvelope {
     pub fn new() -> Self {
         Self {
@@ -36,25 +37,23 @@ impl EventEnvelope {
     }
 
     pub fn read_count(&self) -> u64 {
-        unsafe { self.read_count.load(Ordering::Acquire) }
+        self.read_count.load(Ordering::Acquire)
     }
 
-    pub fn read<'a, T: 'static>(&self) -> Option<EventRead<'a, T>> {
+    pub unsafe fn read<'a, T: 'static>(&self) -> Option<EventRead<'a, T>> {
         let guard = pin();
 
-        if let Some(event) = unsafe { self.event.load(Ordering::Release, &guard).as_ref() } {
-            if TypeId::of::<T>() == event.type_id {
-                let event_data = unsafe { std::ptr::read(&(*event).data) };
+        let event = self.event.load(Ordering::Acquire, &guard).as_raw();
 
-                if let Some(casted_data) = event_data.downcast_ref::<Box<T>>() {
-                    self.read_count.fetch_add(1, Ordering::Release);
+        if !event.is_null() && TypeId::of::<T>() == (*event).type_id {
+            if let Some(event_data) = (*event).data.downcast_ref() {
+                self.read_count.fetch_add(1, Ordering::Release);
 
-                    return Some(EventRead {
-                        _guard: guard,
-                        raw: unsafe { &**casted_data },
-                        _marker: std::marker::PhantomData,
-                    });
-                }
+                return Some(EventRead {
+                    _guard: guard,
+                    raw: &*event_data,
+                    _marker: std::marker::PhantomData,
+                });
             }
         }
 
@@ -85,10 +84,46 @@ impl EventEnvelope {
 
                     break;
                 }
-                Err(cas_fail) => {
-                    event = cas_fail.new;
+                Err(cas_err) => {
+                    event = cas_err.new;
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::event::*;
+
+    #[test]
+    fn event_read_count_init() {
+        let e = EventEnvelope::new();
+        assert_eq!(0, e.read_count());
+    }
+
+    #[test]
+    fn event_read() {
+        let e = EventEnvelope::new();
+        let r = unsafe { e.read::<String>() };
+        assert!(r.is_none());
+        assert_eq!(0, e.read_count());
+    }
+
+    #[test]
+    fn event_overwrite() {
+        let e = EventEnvelope::new();
+
+        let msg = String::from("Hello world!");
+        e.overwrite(msg);
+
+        let readable_event = unsafe { e.read::<String>() };
+        assert!(readable_event.is_some());
+
+        let read_msg = &*readable_event.unwrap();
+        let expected_msg = String::from("Hello world!");
+
+        assert!(expected_msg.eq(read_msg));
+        assert_eq!(1, e.read_count());
     }
 }
