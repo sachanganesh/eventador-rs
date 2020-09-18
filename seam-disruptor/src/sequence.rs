@@ -12,17 +12,6 @@ impl Sequence {
         }
     }
 
-    pub fn get_minimum_sequence(sequences: &[Arc<Sequence>], minimum: u64) -> u64 {
-        let mut minimum = minimum;
-
-        for sequence in sequences {
-            let value = sequence.get();
-            minimum = std::cmp::min(minimum, value);
-        }
-
-        return minimum;
-    }
-
     pub fn get_maximum_sequence(sequences: &[Sequence], maximum: u64) -> u64 {
         let mut maximum = maximum;
 
