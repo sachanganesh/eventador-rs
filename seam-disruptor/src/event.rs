@@ -60,7 +60,7 @@ impl EventEnvelope {
         return None;
     }
 
-    pub fn overwrite<T: 'static>(&self, data: T) {
+    pub(crate) fn overwrite<T: 'static>(&self, data: T) {
         let mut event = Owned::new(Event {
             type_id: TypeId::of::<T>(),
             data: Box::new(data),
