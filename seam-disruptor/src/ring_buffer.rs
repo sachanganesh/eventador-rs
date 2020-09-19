@@ -56,7 +56,7 @@ impl RingBuffer {
         }
     }
 
-    pub async fn subscribe<'a, T: 'static + Send>(&self) -> Subscriber<'a, T> {
+    pub async fn subscribe<'a, T: 'static + Send>(&'a self) -> Subscriber<'a, T> {
         let sequence = Arc::new(Sequence::with_value(self.sequencer.next().await));
         self.sequencer.register_gating_sequence(sequence.clone());
         Subscriber::new(&self, sequence)
