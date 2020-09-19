@@ -1,5 +1,6 @@
 use async_std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::hash::{Hash, Hasher};
 
 pub struct Sequence {
     value: AtomicU64,
@@ -37,3 +38,29 @@ impl Sequence {
             == expected
     }
 }
+
+impl Hash for Sequence {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.get().hash(state)
+    }
+}
+
+impl Ord for Sequence {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.get().cmp(&other.get())
+    }
+}
+
+impl PartialOrd for Sequence {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.get().cmp(&other.get()))
+    }
+}
+
+impl PartialEq for Sequence {
+    fn eq(&self, other: &Self) -> bool {
+        self.get() == other.get()
+    }
+}
+
+impl Eq for Sequence {}

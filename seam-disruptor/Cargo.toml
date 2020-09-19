@@ -12,3 +12,4 @@ async-channel = "1.4"
 async-std = { version = "1.6" }
 crossbeam-epoch = "0.8.2"
 crossbeam-utils = "0.7.2"
+lockfree = "0.5.1"

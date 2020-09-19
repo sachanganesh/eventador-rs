@@ -23,7 +23,7 @@ impl Sequencer {
     }
 
     pub(crate) fn register_gating_sequence(&self, sequence: Arc<Sequence>) {
-        self.gating_sequences.add(sequence)
+        self.gating_sequences.add(sequence);
     }
 
     pub async fn next(&self) -> u64 {
@@ -45,14 +45,14 @@ impl Sequencer {
             let cached_gating_sequence = self.gating_sequence_cache.get();
 
             if wrap_point > cached_gating_sequence || cached_gating_sequence > current {
-                if let Some(gating_sequence) = self.gating_sequences.get_minimum_sequence(current) {
-                    if wrap_point > gating_sequence {
-                        async_std::task::sleep(Duration::from_nanos(1)).await;
-                        continue;
-                    }
+                let gating_sequence = self.gating_sequences.minimum_sequence(current);
 
-                    self.gating_sequence_cache.set(gating_sequence);
+                if wrap_point > gating_sequence {
+                    async_std::task::sleep(Duration::from_nanos(1)).await;
+                    continue;
                 }
+
+                self.gating_sequence_cache.set(gating_sequence);
             } else if self.cursor.compare_and_swap(current, next) {
                 break Ok(next);
             }
