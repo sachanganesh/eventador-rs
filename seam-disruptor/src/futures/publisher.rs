@@ -1,17 +1,18 @@
-use futures::Sink;
 use crate::ring_buffer::RingBuffer;
-use futures::task::{Context, Poll};
-use std::pin::Pin;
 use async_channel::RecvError;
+use futures::task::{Context, Poll};
+use futures::Sink;
+use std::pin::Pin;
+use std::sync::Arc;
 
-pub struct AsyncPublisher<'a, T> {
-    ring: &'a RingBuffer,
+pub struct AsyncPublisher<T> {
+    ring: Arc<RingBuffer>,
     sequence: Option<u64>,
-    event: Option<T>
+    event: Option<T>,
 }
 
-impl<'a, T: 'static + Unpin> AsyncPublisher<'a, T> {
-    pub fn new(ring: &'a RingBuffer) -> Self {
+impl<T: 'static + Unpin> AsyncPublisher<T> {
+    pub fn new(ring: Arc<RingBuffer>) -> Self {
         Self {
             ring,
             sequence: None,
@@ -30,7 +31,7 @@ impl<'a, T: 'static + Unpin> AsyncPublisher<'a, T> {
     }
 }
 
-impl<'a, T: 'static + Unpin> Sink<T> for AsyncPublisher<'a, T> {
+impl<T: 'static + Unpin> Sink<T> for AsyncPublisher<T> {
     type Error = RecvError;
 
     fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -50,7 +51,10 @@ impl<'a, T: 'static + Unpin> Sink<T> for AsyncPublisher<'a, T> {
         Ok(())
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_flush(
+        mut self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
         self.publish();
         Poll::Ready(Ok(()))
     }
@@ -60,7 +64,6 @@ impl<'a, T: 'static + Unpin> Sink<T> for AsyncPublisher<'a, T> {
         Poll::Ready(Ok(()))
     }
 }
-
 
 #[cfg(test)]
 mod tests {

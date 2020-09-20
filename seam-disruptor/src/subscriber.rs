@@ -1,4 +1,4 @@
-use crate::event::EventRead;
+use crate::event::{EventRead, EventReadLabel};
 use crate::ring_buffer::RingBuffer;
 use crate::sequence::Sequence;
 use std::sync::Arc;
@@ -25,12 +25,24 @@ where
         self.sequence.get()
     }
 
-    pub fn recv<'b>(&self) -> EventRead<'b, T> {
+    pub fn recv<'b>(&self) -> Option<EventRead<'b, T>> {
         loop {
             let sequence = self.sequence.increment();
 
-            if let Some(event) = self.ring.get_event(sequence) {
-                return event;
+            loop {
+                match self.ring.get_event(sequence) {
+                    EventReadLabel::Irrelevant => {
+                        break;
+                    }
+
+                    EventReadLabel::Relevant(event) => {
+                        return Some(event);
+                    }
+
+                    EventReadLabel::Waiting => {
+                        continue;
+                    }
+                }
             }
         }
     }

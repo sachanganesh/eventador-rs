@@ -1,9 +1,6 @@
-use crate::event::{EventEnvelope, EventRead};
-use crate::sequence::Sequence;
-use crate::sequencer::Sequencer;
-use crate::subscriber::Subscriber;
+use crate::event::{EventEnvelope, EventRead, EventReadLabel};
+use crate::sequence::sequencer::Sequencer;
 use std::sync::Arc;
-use crate::async_publisher::AsyncPublisher;
 
 pub struct RingBuffer {
     capacity: u64,
@@ -33,6 +30,10 @@ impl RingBuffer {
         }
     }
 
+    pub(crate) fn sequencer(&self) -> &Sequencer {
+        &self.sequencer
+    }
+
     pub(crate) fn next(&self) -> u64 {
         self.sequencer.next()
     }
@@ -51,38 +52,29 @@ impl RingBuffer {
         }
     }
 
-    pub(crate) fn get_event<'a, T: 'static>(&self, sequence: u64) -> Option<EventRead<'a, T>> {
+    pub(crate) fn get_event<'a, T: 'static>(
+        &self,
+        sequence: u64,
+    ) -> EventReadLabel<EventRead<'a, T>> {
         let idx = self.idx_from_sequence(sequence);
 
-        if let Some(event) = self.buffer.get(idx) {
-            let e = event.clone();
+        let envelope = self
+            .buffer
+            .get(idx)
+            .expect("ring buffer was not pre-populated with empty event envelopes")
+            .clone();
 
-            loop {
-                if sequence == e.sequence() {
-                    return unsafe { e.read() };
-                }
+        if sequence == envelope.sequence() {
+            let event_opt: Option<EventRead<T>> = unsafe { envelope.read() };
+
+            if let Some(event) = event_opt {
+                EventReadLabel::Relevant(event)
+            } else {
+                EventReadLabel::Irrelevant
             }
+        } else {
+            EventReadLabel::Waiting
         }
-
-        return None;
-    }
-
-    pub fn publish<T: 'static + Send>(&self, message: T) {
-        let sequence = self.next();
-        let idx = self.idx_from_sequence(sequence);
-        if let Some(event_store) = self.buffer.get(idx).clone() {
-            event_store.overwrite::<T>(sequence, message);
-        }
-    }
-
-    pub fn subscribe<'a, T: 'static + Send>(&'a self) -> Subscriber<'a, T> {
-        let sequence = Arc::new(Sequence::with_value(self.sequencer.get()));
-        self.sequencer.register_gating_sequence(sequence.clone());
-        Subscriber::new(&self, sequence)
-    }
-
-    pub fn publisher<T: 'static + Send + Unpin>(&self) -> AsyncPublisher<T> {
-        AsyncPublisher::new(&self)
     }
 }
 
@@ -98,8 +90,6 @@ impl Default for RingBuffer {
 #[cfg(test)]
 mod tests {
     use crate::ring_buffer::RingBuffer;
-    use std::sync::Arc;
-    use futures::SinkExt;
 
     #[test]
     fn error_if_not_power_of_two() {
@@ -109,48 +99,5 @@ mod tests {
     #[test]
     fn success_if_power_of_two() {
         assert!(RingBuffer::new(16).is_ok());
-    }
-
-    #[test]
-    fn publish_and_subscribe() {
-        let rb_res = RingBuffer::new(4);
-        assert!(rb_res.is_ok());
-
-        let rb = Arc::new(rb_res.unwrap());
-
-        let sub = rb.subscribe::<usize>();
-        assert_eq!(0, sub.sequence()); // @todo double check if it should be this way
-
-        let mut i: usize = 1234;
-        rb.publish(i);
-
-        let mut msg = sub.recv();
-        assert_eq!(i, *msg);
-
-        i += 1;
-        let rb2 = rb.clone();
-
-        std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_secs(1));
-            rb2.publish(i);
-        });
-
-        msg = sub.recv();
-        assert_eq!(i, *msg);
-    }
-
-    #[test]
-    fn async_publish() {
-        let rb = Arc::new(RingBuffer::new(4).unwrap());
-        let sub = rb.subscribe::<usize>();
-
-        let mut publisher = rb.publisher();
-
-        let i: usize = 1234;
-        let sent = tokio_test::block_on(publisher.send(i));
-        assert!(sent.is_ok());
-
-        let msg = sub.recv();
-        assert_eq!(i, *msg);
     }
 }

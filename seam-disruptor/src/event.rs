@@ -9,6 +9,12 @@ pub struct Event {
     pub data: Box<dyn Any>,
 }
 
+pub(crate) enum EventReadLabel<T> {
+    Irrelevant,
+    Relevant(T),
+    Waiting,
+}
+
 pub struct EventRead<'a, T: 'a> {
     _guard: Guard,
     raw: *const T,

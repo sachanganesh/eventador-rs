@@ -37,7 +37,7 @@ impl SequenceGroup {
 
 #[cfg(test)]
 mod tests {
-    use crate::sequence_group::*;
+    use crate::sequence::sequence_group::*;
 
     #[test]
     fn updates_atomically() {

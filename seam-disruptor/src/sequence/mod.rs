@@ -1,3 +1,6 @@
+pub(crate) mod sequence_group;
+pub(crate) mod sequencer;
+
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
 

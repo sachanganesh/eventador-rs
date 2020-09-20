@@ -1,5 +1,5 @@
+use crate::sequence::sequence_group::SequenceGroup;
 use crate::sequence::Sequence;
-use crate::sequence_group::SequenceGroup;
 use std::sync::Arc;
 
 pub struct Sequencer {
