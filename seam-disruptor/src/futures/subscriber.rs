@@ -56,6 +56,7 @@ where
 impl<'a, T: 'static> Stream for AsyncSubscriber<'a, T> {
     type Item = EventRead<'a, T>;
 
+    // @todo: Needs thorough testing due to failed prior tests
     fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         loop {
             let sequence = self.sequence.get();
