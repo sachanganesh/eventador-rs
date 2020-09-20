@@ -1,14 +1,12 @@
 use crate::event::EventRead;
 use crate::ring_buffer::RingBuffer;
 use crate::sequence::Sequence;
-use async_std::sync::Arc;
-use async_std::task::JoinHandle;
+use std::sync::Arc;
 
 pub struct Subscriber<'a, T> {
     ring: &'a RingBuffer,
     sequence: Arc<Sequence>,
     _marker: std::marker::PhantomData<T>,
-    // task: JoinHandle<()>,
 }
 
 impl<'a, T> Subscriber<'a, T>
@@ -27,11 +25,11 @@ where
         self.sequence.get()
     }
 
-    pub async fn recv<'b>(&self) -> EventRead<'b, T> {
+    pub fn recv<'b>(&self) -> EventRead<'b, T> {
         loop {
             let sequence = self.sequence.increment();
 
-            if let Some(event) = self.ring.get(sequence).await {
+            if let Some(event) = self.ring.get(sequence) {
                 return event;
             }
         }

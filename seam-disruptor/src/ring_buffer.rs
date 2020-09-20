@@ -2,7 +2,7 @@ use crate::event::{EventEnvelope, EventRead};
 use crate::sequence::Sequence;
 use crate::sequencer::Sequencer;
 use crate::subscriber::Subscriber;
-use async_std::sync::Arc;
+use std::sync::Arc;
 
 pub struct RingBuffer {
     capacity: u64,
@@ -40,7 +40,7 @@ impl RingBuffer {
         (sequence & (self.capacity - 1)) as usize
     }
 
-    pub async fn get<'a, T: 'static>(&self, sequence: u64) -> Option<EventRead<'a, T>> {
+    pub fn get<'a, T: 'static>(&self, sequence: u64) -> Option<EventRead<'a, T>> {
         let idx = self.idx_from_sequence(sequence);
 
         if let Some(event) = self.buffer.get(idx) {
@@ -83,8 +83,7 @@ impl Default for RingBuffer {
 #[cfg(test)]
 mod tests {
     use crate::ring_buffer::RingBuffer;
-    use async_std::sync::Arc;
-    use async_std::task;
+    use std::sync::Arc;
 
     #[test]
     fn error_if_not_power_of_two() {
@@ -96,8 +95,8 @@ mod tests {
         assert!(RingBuffer::new(16).is_ok());
     }
 
-    #[async_std::test]
-    async fn publish_and_subscribe() {
+    #[test]
+    fn publish_and_subscribe() {
         let rb_res = RingBuffer::new(4);
         assert!(rb_res.is_ok());
 
@@ -109,18 +108,18 @@ mod tests {
         let mut i: usize = 1234;
         rb.publish(i);
 
-        let mut msg = sub.recv().await;
+        let mut msg = sub.recv();
         assert_eq!(i, *msg);
 
         i += 1;
         let rb2 = rb.clone();
 
-        task::spawn(async move {
-            task::sleep(std::time::Duration::from_secs(1)).await;
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(1));
             rb2.publish(i);
         });
 
-        msg = sub.recv().await;
+        msg = sub.recv();
         assert_eq!(i, *msg);
     }
 }

@@ -772,9 +772,9 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-channel",
- "async-std",
  "crossbeam-epoch",
  "crossbeam-utils",
+ "futures",
  "lockfree",
 ]
 

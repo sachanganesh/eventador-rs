@@ -1,6 +1,6 @@
 use crate::sequence::Sequence;
-use async_std::sync::Arc;
 use lockfree::set::{Removed, Set};
+use std::sync::Arc;
 
 pub struct SequenceGroup {
     set: Set<Arc<Sequence>>,

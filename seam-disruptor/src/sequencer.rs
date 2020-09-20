@@ -1,7 +1,6 @@
 use crate::sequence::Sequence;
 use crate::sequence_group::SequenceGroup;
-use async_std::sync::Arc;
-use std::time::Duration;
+use std::sync::Arc;
 
 pub struct Sequencer {
     cursor: Sequence,
@@ -50,7 +49,7 @@ impl Sequencer {
                 let gating_sequence = self.gating_sequences.minimum_sequence(current);
 
                 if wrap_point > gating_sequence as i64 {
-                    async_std::task::block_on(async_std::task::sleep(Duration::from_nanos(1)));
+                    // async_std::task::block_on(async_std::task::sleep(Duration::from_nanos(1)));
                     continue;
                 }
 
