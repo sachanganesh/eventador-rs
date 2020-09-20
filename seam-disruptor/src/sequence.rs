@@ -1,6 +1,5 @@
-use async_std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::hash::{Hash, Hasher};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 pub struct Sequence {
     value: AtomicU64,
@@ -11,17 +10,6 @@ impl Sequence {
         Self {
             value: AtomicU64::from(initial_value),
         }
-    }
-
-    pub fn get_maximum_sequence(sequences: &[Sequence], maximum: u64) -> u64 {
-        let mut maximum = maximum;
-
-        for sequence in sequences {
-            let value = sequence.get();
-            maximum = std::cmp::max(maximum, value);
-        }
-
-        return maximum;
     }
 
     pub fn get(&self) -> u64 {
@@ -36,6 +24,10 @@ impl Sequence {
         self.value
             .compare_and_swap(expected, new_value, Ordering::AcqRel)
             == expected
+    }
+
+    pub fn increment(&self) -> u64 {
+        self.value.fetch_add(1, Ordering::Release)
     }
 }
 

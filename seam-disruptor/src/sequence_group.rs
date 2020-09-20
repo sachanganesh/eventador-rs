@@ -1,18 +1,14 @@
 use crate::sequence::Sequence;
 use async_std::sync::Arc;
-use crossbeam_epoch::{pin, Atomic, Owned};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use lockfree::set::{Set, Removed};
+use lockfree::set::{Removed, Set};
 
 pub struct SequenceGroup {
-    set: Set<Arc<Sequence>>
+    set: Set<Arc<Sequence>>,
 }
 
 impl SequenceGroup {
     pub fn new() -> Self {
-        Self {
-            set: Set::new()
-        }
+        Self { set: Set::new() }
     }
 
     pub fn add(&self, sequence: Arc<Sequence>) -> bool {
