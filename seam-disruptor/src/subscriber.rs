@@ -29,7 +29,7 @@ where
         loop {
             let sequence = self.sequence.increment();
 
-            if let Some(event) = self.ring.get(sequence) {
+            if let Some(event) = self.ring.get_event(sequence) {
                 return event;
             }
         }

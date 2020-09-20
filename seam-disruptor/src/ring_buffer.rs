@@ -3,6 +3,7 @@ use crate::sequence::Sequence;
 use crate::sequencer::Sequencer;
 use crate::subscriber::Subscriber;
 use std::sync::Arc;
+use crate::async_publisher::AsyncPublisher;
 
 pub struct RingBuffer {
     capacity: u64,
@@ -32,15 +33,25 @@ impl RingBuffer {
         }
     }
 
-    pub fn next(&self) -> u64 {
+    pub(crate) fn next(&self) -> u64 {
         self.sequencer.next()
     }
 
-    fn idx_from_sequence(&self, sequence: u64) -> usize {
+    pub(crate) fn idx_from_sequence(&self, sequence: u64) -> usize {
         (sequence & (self.capacity - 1)) as usize
     }
 
-    pub fn get<'a, T: 'static>(&self, sequence: u64) -> Option<EventRead<'a, T>> {
+    pub(crate) fn get_envelope(&self, sequence: u64) -> Option<Arc<EventEnvelope>> {
+        let idx = self.idx_from_sequence(sequence);
+
+        if let Some(envelope) = self.buffer.get(idx).clone() {
+            Some(envelope.clone())
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn get_event<'a, T: 'static>(&self, sequence: u64) -> Option<EventRead<'a, T>> {
         let idx = self.idx_from_sequence(sequence);
 
         if let Some(event) = self.buffer.get(idx) {
@@ -69,6 +80,10 @@ impl RingBuffer {
         self.sequencer.register_gating_sequence(sequence.clone());
         Subscriber::new(&self, sequence)
     }
+
+    pub fn publisher<T: 'static + Send + Unpin>(&self) -> AsyncPublisher<T> {
+        AsyncPublisher::new(&self)
+    }
 }
 
 unsafe impl Send for RingBuffer {}
@@ -84,6 +99,7 @@ impl Default for RingBuffer {
 mod tests {
     use crate::ring_buffer::RingBuffer;
     use std::sync::Arc;
+    use futures::SinkExt;
 
     #[test]
     fn error_if_not_power_of_two() {
@@ -120,6 +136,21 @@ mod tests {
         });
 
         msg = sub.recv();
+        assert_eq!(i, *msg);
+    }
+
+    #[test]
+    fn async_publish() {
+        let rb = Arc::new(RingBuffer::new(4).unwrap());
+        let sub = rb.subscribe::<usize>();
+
+        let mut publisher = rb.publisher();
+
+        let i: usize = 1234;
+        let sent = tokio_test::block_on(publisher.send(i));
+        assert!(sent.is_ok());
+
+        let msg = sub.recv();
         assert_eq!(i, *msg);
     }
 }

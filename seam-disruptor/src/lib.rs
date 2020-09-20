@@ -1,6 +1,5 @@
-mod async_ring_buffer;
+mod async_publisher;
 mod event;
-// mod publisher;
 mod ring_buffer;
 mod sequence;
 mod sequence_group;
