@@ -1,10 +1,11 @@
 use crate::event::{EventEnvelope, EventRead, EventReadLabel};
 use crate::sequence::sequencer::Sequencer;
+use crossbeam_utils::CachePadded;
 use std::sync::Arc;
 
 pub struct RingBuffer {
     capacity: u64,
-    buffer: Vec<Arc<EventEnvelope>>,
+    buffer: Vec<CachePadded<Arc<EventEnvelope>>>,
     sequencer: Sequencer,
 }
 
@@ -17,7 +18,7 @@ impl RingBuffer {
             let mut buffer = Vec::with_capacity(ucapacity);
 
             for i in 0..ucapacity {
-                buffer.insert(i, Arc::new(EventEnvelope::new()))
+                buffer.insert(i, CachePadded::new(Arc::new(EventEnvelope::new())))
             }
 
             Ok(Self {
@@ -42,7 +43,7 @@ impl RingBuffer {
         (sequence & (self.capacity - 1)) as usize
     }
 
-    pub(crate) fn get_envelope(&self, sequence: u64) -> Option<Arc<EventEnvelope>> {
+    pub(crate) fn get_envelope(&self, sequence: u64) -> Option<CachePadded<Arc<EventEnvelope>>> {
         let idx = self.idx_from_sequence(sequence);
 
         if let Some(envelope) = self.buffer.get(idx).clone() {
