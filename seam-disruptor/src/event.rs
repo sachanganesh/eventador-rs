@@ -4,7 +4,7 @@ use std::ops::Deref;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Debug)]
-pub struct Event {
+pub(crate) struct Event {
     pub type_id: TypeId,
     pub data: Box<dyn Any>,
 }
@@ -29,7 +29,7 @@ impl<'a, T> Deref for EventRead<'a, T> {
     }
 }
 
-pub struct EventEnvelope {
+pub(crate) struct EventEnvelope {
     sequence: AtomicU64,
     event: Atomic<Event>,
 }
