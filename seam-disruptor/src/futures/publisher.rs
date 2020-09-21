@@ -5,6 +5,15 @@ use futures::Sink;
 use std::pin::Pin;
 use std::sync::Arc;
 
+#[derive(Debug, Clone)]
+pub struct AsyncPublishError;
+
+impl std::fmt::Display for AsyncPublishError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "publisher encountered error it could not recover from")
+    }
+}
+
 pub struct AsyncPublisher<T> {
     ring: Arc<RingBuffer>,
     sequence: Option<u64>,
@@ -20,7 +29,7 @@ impl<T: 'static + Unpin> AsyncPublisher<T> {
         }
     }
 
-    pub(crate) fn publish(&mut self) {
+    pub(crate) fn write_to_ring(&mut self) {
         if let Some(sequence) = self.sequence.take() {
             if let Some(envelope) = self.ring.get_envelope(sequence) {
                 if let Some(event) = self.event.take() {
@@ -55,7 +64,7 @@ impl<T: 'static + Unpin> Sink<T> for AsyncPublisher<T> {
         mut self: Pin<&mut Self>,
         _cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
-        self.publish();
+        self.write_to_ring();
         Poll::Ready(Ok(()))
     }
 
