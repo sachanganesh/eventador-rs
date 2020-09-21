@@ -6,6 +6,7 @@ pub struct SequenceGroup {
     set: Set<Arc<Sequence>>,
 }
 
+#[allow(dead_code)]
 impl SequenceGroup {
     pub fn new() -> Self {
         Self { set: Set::new() }
