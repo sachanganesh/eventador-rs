@@ -89,7 +89,7 @@ mod tests {
         let disruptor2 = disruptor.clone();
 
         std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_secs(1));
+            std::thread::sleep(std::time::Duration::from_secs(3));
             disruptor2.publish(i);
         });
 
@@ -110,7 +110,7 @@ mod tests {
         let (sender, mut receiver) = unbounded::<Result<usize, RecvError>>();
 
         let mut i: usize = 1234;
-        let sent = sender.send(Ok(i)).await;
+        let mut sent = sender.send(Ok(i)).await;
         assert!(sent.is_ok());
 
         let _handle = async_std::task::spawn(async move {
@@ -123,10 +123,17 @@ mod tests {
         i += 1;
         let disruptor2 = disruptor.clone();
 
-        std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_secs(1));
+        async_std::task::spawn(async move {
+            async_std::task::sleep(std::time::Duration::from_secs(3));
             disruptor2.publish(i);
         });
+
+        msg = subscriber.recv().await.unwrap();
+        assert_eq!(i, *msg);
+
+        i += 1;
+        sent = sender.send(Ok(i)).await;
+        assert!(sent.is_ok());
 
         msg = subscriber.recv().await.unwrap();
         assert_eq!(i, *msg);
