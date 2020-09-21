@@ -14,6 +14,7 @@ Please keep this limitation in mind when building binaries that depend on this c
 
 ## Future Goals
 
+- Use the `futures` crate to reduce dependency on `async-std` runtime
 - Documentation
 - Stable TypeId evaluation
 - Connection pool (+ accounting for ordering of messages)

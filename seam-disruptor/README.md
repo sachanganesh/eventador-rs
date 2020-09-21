@@ -4,6 +4,7 @@ This crate provides a lock-free Pub/Sub event-bus based on the disruptor pattern
 
 ## Future Goals
 
+- Use Wakers for more efficient async operations
 - Documentation
 - Event sourcing by storing deltas (events) and periodically squashing them to save space
 - Testing
