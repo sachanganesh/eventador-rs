@@ -1,4 +1,4 @@
-# seam-channel
+# seam-disruptor
 
 This crate provides a Pub/Sub event-bus based on the disruptor pattern from LMAX. It can be used in a local context as well as a distributed context to source and send events to other computers.
 
@@ -13,6 +13,6 @@ This crate provides a Pub/Sub event-bus based on the disruptor pattern from LMAX
 
 | Feature                                             	| Status 	|
 |-----------------------------------------------------	|--------	|
-| Local MPMC Pub/Sub                     	            |       	|
-| Remote MPMC Pub/Sub 	                                |       	|
+| Async MPMC Pub/Sub 	                                |     ✓  	|
+| Remote MPMC Pub/Sub 	                                |     ✓  	|
 | Event Sourcing                                        |       	|
