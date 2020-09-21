@@ -124,7 +124,7 @@ mod tests {
         let disruptor2 = disruptor.clone();
 
         async_std::task::spawn(async move {
-            async_std::task::sleep(std::time::Duration::from_secs(3));
+            async_std::task::sleep(std::time::Duration::from_secs(3)).await;
             disruptor2.publish(i);
         });
 
