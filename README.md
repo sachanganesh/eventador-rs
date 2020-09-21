@@ -11,6 +11,7 @@ Seam-rs utilities make "stitching" together computers together in a distributed 
 All sub-modules are heavily reliant on the `async-std` crate and its runtime. This dependency may be removed in the future, but definitely not anytime soon.
 
 - **[seam-channel](seam-channel)**: distributed message queue abstraction over network streams, Kafka, SQS, etc.
+- **[seam-disruptor](seam-disruptor)**: a lock-free Pub/Sub event-bus based on the disruptor pattern from LMAX.
 
 ## Roadmap
 
