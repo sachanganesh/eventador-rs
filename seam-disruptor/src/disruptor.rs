@@ -138,4 +138,25 @@ mod tests {
         msg = subscriber.recv().await.unwrap();
         assert_eq!(i, *msg);
     }
+
+    #[derive(Debug, Eq, PartialEq)]
+    enum TestEnum {
+        SampleA,
+    }
+
+    #[test]
+    fn enum_specific_subscription() {
+        let res = Disruptor::new(4);
+        assert!(res.is_ok());
+
+        let disruptor: Disruptor = res.unwrap();
+
+        let subscriber = disruptor.subscribe::<TestEnum>();
+        assert_eq!(1, subscriber.sequence()); // @todo double check if it should be this way
+
+        disruptor.publish(TestEnum::SampleA);
+
+        let msg = subscriber.recv().unwrap();
+        assert_eq!(TestEnum::SampleA, *msg);
+    }
 }
