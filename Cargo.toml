@@ -12,11 +12,5 @@ members = [
 ]
 
 [dependencies]
-anyhow = "1.0.31"
-async-channel = "1.4.0"
-async-std = { version = "1.6.2", features = ["attributes"] }
-env_logger = "0.7"
-log = "0.4"
-uuid = { version = "0.8.1", features = ["serde", "v4"] }
-
 seam-channel = { path = "seam-channel" }
+seam-disruptor = { path = "seam-disruptor" }
