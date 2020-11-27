@@ -1,21 +1,19 @@
-# seam-rs
+# seam-disruptor
 
-This crate provides tools for building reliable, fault-tolerant, distributed systems.
+This crate provides a lock-free Pub/Sub event-bus based on the disruptor pattern from LMAX. It can be used in a local context as well as a distributed context to source and send events to other computers.
 
->In sewing, a seam is the join where two or more layers of fabric, leather, or other materials are held together with stitches.
+## Future Goals
 
-Seam-rs utilities make "stitching" together computers together in a distributed system simple, reliable, and robust.
+- Use Wakers for more efficient async operations
+- Documentation
+- Event sourcing by storing deltas (events) and periodically squashing them to save space
+- Testing
+- Benchmarking
 
-<hr>
+## Feature Status
 
-All sub-modules are heavily reliant on the `async-std` crate and its runtime. This dependency may be removed in the future, but definitely not anytime soon.
-
-- **[seam-channel](seam-channel)**: distributed message queue abstraction over network streams, Kafka, SQS, etc.
-- **[seam-disruptor](seam-disruptor)**: a lock-free Pub/Sub event-bus based on the disruptor pattern from LMAX.
-
-## Roadmap
-
-- **seam-partition**: distributed hash-table algorithms to partition elements across network
-- **seam-consistency**: CRDTs and methods for strongly consistent transactions
-- **seam-membership**: membership algorithms to determine node joins and leaves
-- **seam-failure**: failure detection algorithms to identify network partitions
+| Feature                                             	| Status 	|
+|-----------------------------------------------------	|--------	|
+| Async MPMC Pub/Sub 	                                |     ✓  	|
+| Remote MPMC Pub/Sub 	                                |     ✓  	|
+| Event Sourcing                                        |       	|
