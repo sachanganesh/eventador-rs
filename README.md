@@ -24,7 +24,7 @@ Documentation, testing, and most importantly, benchmarking, are not fully realiz
 
 | Feature                                             	| Status 	|
 |-----------------------------------------------------	|--------	|
+| Sync MPMC Pub/Sub 	                                |     ✓  	|
 | Async MPMC Pub/Sub 	                                |     ✓  	|
-| Remote MPMC Pub/Sub 	                                |     ✓  	|
 | Wait Strategies                                       |       	|
 | Event Sourcing                                        |       	|
