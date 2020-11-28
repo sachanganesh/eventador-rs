@@ -1,6 +1,6 @@
 # raptor
 
-This crate provides a lock-free Pub/Sub event-bus based on the Disruptor pattern from LMAX. Event-buses ease the development burden of concurrent programs, by enabling subsystems to subscribe to specific message types and publish at will.
+This crate provides a lock-free Pub/Sub event-bus based on the Disruptor pattern from LMAX. Event-buses ease the development burden of concurrent programs by enabling subsystems to subscribe to specific message types and publish at will.
 
 Both sync and async APIs are available.
 
