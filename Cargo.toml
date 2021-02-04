@@ -1,8 +1,11 @@
 [package]
 name = "eventador"
 version = "0.0.1"
-authors = ["Sachandhan Ganesh <sachan.ganesh@gmail.com>"]
 edition = "2018"
+authors = ["Sachandhan Ganesh <sachan.ganesh@gmail.com>"]
+description = "lock-free pub/sub event-bus based on the LMAX disruptor pattern"
+readme = "README.md"
+license = "Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
