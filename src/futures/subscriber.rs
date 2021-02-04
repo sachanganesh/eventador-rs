@@ -16,7 +16,7 @@ impl<'a, T> AsyncSubscriber<'a, T>
 where
     T: 'static + Send,
 {
-    pub fn new(ring: Arc<RingBuffer>, sequence: Arc<Sequence>) -> Self {
+    pub(crate) fn new(ring: Arc<RingBuffer>, sequence: Arc<Sequence>) -> Self {
         Self {
             ring,
             sequence,

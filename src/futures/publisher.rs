@@ -21,7 +21,7 @@ pub struct AsyncPublisher<T> {
 }
 
 impl<T: 'static + Unpin> AsyncPublisher<T> {
-    pub fn new(ring: Arc<RingBuffer>) -> Self {
+    pub(crate) fn new(ring: Arc<RingBuffer>) -> Self {
         Self {
             ring,
             sequence: None,

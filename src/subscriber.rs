@@ -13,7 +13,7 @@ impl<'a, T> Subscriber<'a, T>
 where
     T: 'static + Send,
 {
-    pub fn new(ring: &'a RingBuffer, sequence: Arc<Sequence>) -> Self {
+    pub(crate) fn new(ring: &'a RingBuffer, sequence: Arc<Sequence>) -> Self {
         Self {
             ring,
             sequence,
