@@ -1,5 +1,5 @@
 [package]
-name = "seam-disruptor"
+name = "eventador"
 version = "0.0.1"
 authors = ["Sachandhan Ganesh <sachan.ganesh@gmail.com>"]
 edition = "2018"

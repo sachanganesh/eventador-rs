@@ -6,11 +6,11 @@ use crate::subscriber::Subscriber;
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct Disruptor {
+pub struct Eventador {
     ring: Arc<RingBuffer>,
 }
 
-impl Disruptor {
+impl Eventador {
     pub fn new(capacity: u64) -> anyhow::Result<Self> {
         Ok(Self {
             ring: Arc::new(RingBuffer::new(capacity)?),
@@ -48,7 +48,7 @@ impl Disruptor {
     }
 }
 
-impl From<RingBuffer> for Disruptor {
+impl From<RingBuffer> for Eventador {
     fn from(ring: RingBuffer) -> Self {
         Self {
             ring: Arc::new(ring),
@@ -56,7 +56,7 @@ impl From<RingBuffer> for Disruptor {
     }
 }
 
-impl From<Arc<RingBuffer>> for Disruptor {
+impl From<Arc<RingBuffer>> for Eventador {
     fn from(ring: Arc<RingBuffer>) -> Self {
         Self { ring }
     }
@@ -64,17 +64,17 @@ impl From<Arc<RingBuffer>> for Disruptor {
 
 #[cfg(test)]
 mod tests {
-    use crate::disruptor::Disruptor;
+    use crate::eventador::Eventador;
     use crate::futures::publisher::AsyncPublisher;
     use async_channel::{unbounded, RecvError};
     use futures::SinkExt;
 
     #[test]
     fn publish_and_subscribe() {
-        let res = Disruptor::new(4);
+        let res = Eventador::new(4);
         assert!(res.is_ok());
 
-        let disruptor: Disruptor = res.unwrap();
+        let disruptor: Eventador = res.unwrap();
 
         let subscriber = disruptor.subscribe::<usize>();
         assert_eq!(1, subscriber.sequence()); // @todo double check if it should be this way
@@ -99,10 +99,10 @@ mod tests {
 
     #[async_std::test]
     async fn async_publish() {
-        let res = Disruptor::new(4);
+        let res = Eventador::new(4);
         assert!(res.is_ok());
 
-        let disruptor: Disruptor = res.unwrap();
+        let disruptor: Eventador = res.unwrap();
 
         let subscriber = disruptor.async_subscriber::<usize>();
         let mut publisher: AsyncPublisher<usize> = disruptor.async_publisher();
@@ -146,10 +146,10 @@ mod tests {
 
     #[test]
     fn enum_specific_subscription() {
-        let res = Disruptor::new(4);
+        let res = Eventador::new(4);
         assert!(res.is_ok());
 
-        let disruptor: Disruptor = res.unwrap();
+        let disruptor: Eventador = res.unwrap();
 
         let subscriber = disruptor.subscribe::<TestEnum>();
         assert_eq!(1, subscriber.sequence()); // @todo double check if it should be this way
