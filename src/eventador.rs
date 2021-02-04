@@ -98,7 +98,7 @@ mod tests {
     }
 
     #[async_std::test]
-    async fn async_publish() {
+    async fn async_publish() { // @todo revisit
         let res = Eventador::new(4);
         assert!(res.is_ok());
 
