@@ -235,8 +235,8 @@ impl From<Arc<RingBuffer>> for Eventador {
 
 #[cfg(test)]
 mod tests {
-    use crate::Eventador;
     use crate::futures::publisher::AsyncPublisher;
+    use crate::Eventador;
     use async_channel::{unbounded, RecvError};
     use futures::SinkExt;
     use ntest::timeout;
