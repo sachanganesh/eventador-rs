@@ -59,7 +59,8 @@
 //! contention.
 //!
 //! ## TypeId
-//!
+//! This crate relies on the use of `TypeId` to determine what type an event is, and what types of
+//! events a subscriber subscribes to.
 //!
 
 mod eventador;
