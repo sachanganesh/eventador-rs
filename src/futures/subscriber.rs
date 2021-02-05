@@ -54,7 +54,6 @@ where
         self.sequence.get()
     }
 
-
     /// Asynchronously read an event of the correct type from the event-bus
     ///
     /// # Example
