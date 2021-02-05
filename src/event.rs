@@ -1,9 +1,10 @@
-use crossbeam_epoch::{pin, Atomic, Guard, Owned};
+use crossbeam::epoch::{pin, Atomic, Guard, Owned};
 use futures::task::Waker;
 use lockfree::queue::Queue;
 use std::any::{Any, TypeId};
 use std::ops::Deref;
 use std::sync::atomic::{AtomicU64, Ordering};
+use crate::subscriber::SubscriberAlert;
 
 #[derive(Debug)]
 pub(crate) struct Event {
@@ -40,7 +41,7 @@ impl<'a, T> Deref for EventRead<'a, T> {
 pub(crate) struct EventEnvelope {
     sequence: AtomicU64,
     event: Atomic<Event>,
-    subscribers: Queue<Option<Waker>>,
+    subscribers: Queue<Option<Box<dyn SubscriberAlert>>>,
 }
 
 impl EventEnvelope {
@@ -57,7 +58,7 @@ impl EventEnvelope {
     }
 
     pub fn add_subscriber(&self, waker: Waker) {
-        self.subscribers.push(Some(waker));
+        self.subscribers.push(Some(Box::new(waker)));
     }
 
     pub unsafe fn read<'a, T: 'static>(&self) -> Option<EventRead<'a, T>> {
@@ -102,9 +103,9 @@ impl EventEnvelope {
                         }
                     }
 
-                    for waker_opt in self.subscribers.pop_iter() {
-                        if let Some(waker) = waker_opt {
-                            waker.wake();
+                    for alerter_opt in self.subscribers.pop_iter() {
+                        if let Some(alerter) = alerter_opt {
+                            alerter.alert();
                         }
                     }
 

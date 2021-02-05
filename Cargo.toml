@@ -16,8 +16,7 @@ license = "Apache-2.0"
 [dependencies]
 anyhow = "1.0"
 async-channel = "1.5.1"
-crossbeam-epoch = "0.9.1"
-crossbeam-utils = "0.8.1"
+crossbeam = "0.8.0"
 futures = "0.3.12"
 lockfree = "0.5.1"
 

@@ -1,10 +1,17 @@
 use crate::event::EventRead;
 use crate::ring_buffer::RingBuffer;
 use crate::sequence::Sequence;
-use futures::task::{Context, Poll};
+use futures::task::{Context, Poll, Waker};
 use futures::Stream;
 use std::pin::Pin;
 use std::sync::Arc;
+use crate::subscriber::SubscriberAlert;
+
+impl SubscriberAlert for Waker {
+    fn alert(&self) {
+        self.wake_by_ref();
+    }
+}
 
 /// A handle to subscribe to events and receive them asynchronously
 ///

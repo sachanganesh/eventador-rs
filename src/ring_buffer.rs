@@ -1,6 +1,6 @@
 use crate::event::{EventEnvelope, EventRead};
 use crate::sequence::sequencer::Sequencer;
-use crossbeam_utils::CachePadded;
+use crossbeam::utils::CachePadded;
 use std::sync::Arc;
 
 pub(crate) type EventWrapper = CachePadded<Arc<EventEnvelope>>;
