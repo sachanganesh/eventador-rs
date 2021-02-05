@@ -1,9 +1,13 @@
 [package]
 name = "eventador"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2018"
 authors = ["Sachandhan Ganesh <sachan.ganesh@gmail.com>"]
-description = "lock-free pub/sub event-bus based on the LMAX disruptor pattern"
+description = "lock-free sync and async pub/sub event-bus based on the LMAX disruptor pattern"
+keywords = ["pub-sub", "lock-free", "event-bus", "event", "disruptor"]
+categories = ["asynchronous", "caching", "concurrency", "data-structures"]
+repository = "https://github.com/sachanganesh/eventador-rs"
+documentation = "https://docs.rs/eventador/"
 readme = "README.md"
 license = "Apache-2.0"
 
