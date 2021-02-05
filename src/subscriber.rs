@@ -1,8 +1,18 @@
 use crate::event::EventRead;
 use crate::ring_buffer::RingBuffer;
 use crate::sequence::Sequence;
-use crossbeam::sync::Unparker;
+use crossbeam::sync::{Parker, Unparker};
 use std::sync::Arc;
+
+pub(crate) trait SubscriberAlert {
+    fn alert(&self);
+}
+
+impl SubscriberAlert for Unparker {
+    fn alert(&self) {
+        self.unpark();
+    }
+}
 
 /// A handle to receive events that were subscribed to from the event-bus
 ///
@@ -71,18 +81,32 @@ where
     /// assert_eq!(i, *msg);
     /// ```
     ///
-    pub fn recv<'b>(&self) -> Option<EventRead<'b, T>> {
-        let sequence = self.sequence.increment();
-        self.ring.get_event(sequence)
-    }
-}
+    pub fn recv<'b>(&self) -> EventRead<'b, T> {
+        loop {
+            let sequence = self.sequence.get();
 
-pub(crate) trait SubscriberAlert {
-    fn alert(&self);
-}
+            let envelope = self
+                .ring
+                .get_envelope(sequence)
+                .expect("ring buffer was not pre-populated with empty event envelopes")
+                .clone();
 
-impl SubscriberAlert for Unparker {
-    fn alert(&self) {
-        self.unpark();
+            let envelope_sequence = envelope.sequence();
+            if sequence == envelope_sequence {
+                self.sequence.increment();
+                let event_opt: Option<EventRead<T>> = unsafe { envelope.read() };
+
+                if let Some(event) = event_opt {
+                    return event;
+                }
+            } else if sequence > envelope_sequence {
+                let parker = Parker::new();
+                envelope.add_subscriber(Box::new(parker.unparker().clone()));
+
+                parker.park();
+            } else {
+                todo!()
+            }
+        }
     }
 }

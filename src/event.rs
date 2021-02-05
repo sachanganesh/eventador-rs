@@ -1,5 +1,4 @@
 use crossbeam::epoch::{pin, Atomic, Guard, Owned};
-use futures::task::Waker;
 use lockfree::queue::Queue;
 use std::any::{Any, TypeId};
 use std::ops::Deref;
@@ -57,8 +56,8 @@ impl EventEnvelope {
         self.sequence.load(Ordering::Acquire)
     }
 
-    pub fn add_subscriber(&self, waker: Waker) {
-        self.subscribers.push(Some(Box::new(waker)));
+    pub fn add_subscriber(&self, alerter: Box<dyn SubscriberAlert>) {
+        self.subscribers.push(Some(alerter));
     }
 
     pub unsafe fn read<'a, T: 'static>(&self) -> Option<EventRead<'a, T>> {

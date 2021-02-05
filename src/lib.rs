@@ -279,12 +279,12 @@ mod tests {
         let disruptor: Eventador = res.unwrap();
 
         let subscriber = disruptor.subscribe::<usize>();
-        assert_eq!(1, subscriber.sequence()); // @todo double check if it should be this way
+        assert_eq!(1, subscriber.sequence());
 
         let mut i: usize = 1234;
         disruptor.publish(i);
 
-        let mut msg = subscriber.recv().unwrap();
+        let mut msg = subscriber.recv();
         assert_eq!(i, *msg);
 
         i += 1111;
@@ -295,7 +295,7 @@ mod tests {
             disruptor2.publish(i);
         });
 
-        msg = subscriber.recv().unwrap();
+        msg = subscriber.recv();
         assert_eq!(i, *msg);
     }
 
@@ -366,12 +366,12 @@ mod tests {
         let disruptor: Eventador = res.unwrap();
 
         let subscriber = disruptor.subscribe::<TestEnum>();
-        assert_eq!(1, subscriber.sequence()); // @todo double check if it should be this way
+        assert_eq!(1, subscriber.sequence());
         println!("Passed part 2!");
 
         disruptor.publish(TestEnum::SampleA);
 
-        let msg = subscriber.recv().unwrap();
+        let msg = subscriber.recv();
         assert_eq!(TestEnum::SampleA, *msg);
         println!("Passed part 3! Done.");
     }

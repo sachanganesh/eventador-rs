@@ -1,4 +1,4 @@
-use crate::event::{EventEnvelope, EventRead};
+use crate::event::EventEnvelope;
 use crate::sequence::sequencer::Sequencer;
 use crossbeam::utils::CachePadded;
 use std::sync::Arc;
@@ -25,7 +25,7 @@ impl RingBuffer {
 
             Ok(Self {
                 capacity,
-                buffer, // @todo explore cache line optimization with padding
+                buffer,
                 sequencer,
             })
         } else {
@@ -52,25 +52,6 @@ impl RingBuffer {
             Some(envelope.clone())
         } else {
             None
-        }
-    }
-
-    pub(crate) fn get_event<'a, T: 'static>(&self, sequence: u64) -> Option<EventRead<'a, T>> {
-        let envelope = self
-            .get_envelope(sequence)
-            .expect("ring buffer was not pre-populated with empty event envelopes")
-            .clone();
-
-        loop {
-            if sequence == envelope.sequence() {
-                let event_opt: Option<EventRead<T>> = unsafe { envelope.read() };
-
-                return if let Some(event) = event_opt {
-                    Some(event)
-                } else {
-                    None
-                }
-            }
         }
     }
 }

@@ -85,7 +85,7 @@ impl<'a, T: 'static> Stream for AsyncSubscriber<'a, T> {
                     return Poll::Ready(Some(event));
                 }
             } else if sequence > envelope_sequence {
-                envelope.add_subscriber(cx.waker().clone());
+                envelope.add_subscriber(Box::new(cx.waker().clone()));
                 return Poll::Pending;
             } else {
                 todo!()
