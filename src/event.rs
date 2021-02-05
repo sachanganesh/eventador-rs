@@ -15,6 +15,19 @@ pub(crate) enum EventReadLabel<T> {
     Waiting,
 }
 
+
+/// A wrapper that can be de-referenced to access and read the event
+///
+/// Implements the [`Deref`] trait to access the wrapped event.
+///
+/// # Example
+///
+/// Basic usage:
+///
+/// ```ignore
+/// let read_msg: &String = &*readable_event.unwrap();
+/// ```
+///
 pub struct EventRead<'a, T: 'a> {
     _guard: Guard,
     raw: *const T,

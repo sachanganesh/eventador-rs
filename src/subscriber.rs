@@ -3,6 +3,30 @@ use crate::ring_buffer::RingBuffer;
 use crate::sequence::Sequence;
 use std::sync::Arc;
 
+/// A handle to receive events that were subscribed to from the event-bus
+///
+/// The [`Subscriber`] will not receive intended events that were published to the event-bus
+/// before time of subscription. It will only receive intended events that are published after the
+/// time of subscription, as they will have a higher sequence number than the Subscriber's internal
+/// sequence value.
+///
+/// # Example
+///
+/// Basic usage:
+///
+/// ```ignore
+/// let eventbus = Eventador::new(4)?;
+///
+/// // subscribe first, before publishing!
+/// let subscriber = eventbus.subscribe::<usize>();
+///
+/// let mut i: usize = 1234;
+/// eventbus.publish(i);
+///
+/// let mut msg = subscriber.recv().unwrap();
+/// assert_eq!(i, *msg);
+/// ```
+///
 pub struct Subscriber<'a, T> {
     ring: &'a RingBuffer,
     sequence: Arc<Sequence>,
@@ -21,10 +45,31 @@ where
         }
     }
 
+    /// Get the current internal sequence number for the [`Subscriber`]
+    ///
+    /// This sequence number signifies what events the Subscriber may have already read, and any
+    /// events with a sequence value higher than this are events that are still unread.
     pub fn sequence(&self) -> u64 {
         self.sequence.get()
     }
 
+    /// Synchronously read an event of the correct type from the event-bus
+    ///
+    /// # Example
+    ///
+    /// Basic usage:
+    ///
+    /// ```ignore
+    /// let eventbus = Eventador::new(4)?;
+    /// let subscriber = eventbus.subscribe::<usize>();
+    ///
+    /// let mut i: usize = 1234;
+    /// eventbus.publish(i);
+    ///
+    /// let mut msg = subscriber.recv().unwrap();
+    /// assert_eq!(i, *msg);
+    /// ```
+    ///
     pub fn recv<'b>(&self) -> Option<EventRead<'b, T>> {
         loop {
             let sequence = self.sequence.increment();
@@ -32,7 +77,7 @@ where
             loop {
                 match self.ring.get_event(sequence) {
                     EventReadLabel::Irrelevant => {
-                        break;
+                        break; // @todo
                     }
 
                     EventReadLabel::Relevant(event) => {
@@ -40,7 +85,7 @@ where
                     }
 
                     EventReadLabel::Waiting => {
-                        continue;
+                        continue; // @todo
                     }
                 }
             }

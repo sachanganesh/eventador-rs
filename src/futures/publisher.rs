@@ -14,6 +14,22 @@ impl std::fmt::Display for AsyncPublishError {
     }
 }
 
+/// A handle to asynchronously publish to the event-bus
+///
+/// Implements the [`Sink`] trait to asynchronously publish a stream of events to the event-bus.
+///
+/// # Example
+///
+/// Basic usage:
+///
+/// ```ignore
+/// let eventbus = Eventador::new(4)?;
+/// let mut publisher: AsyncPublisher<usize> = eventbus.async_publisher();
+///
+/// let mut i: usize = 1234;
+/// publisher.send(i).await?;
+/// ```
+///
 pub struct AsyncPublisher<T> {
     ring: Arc<RingBuffer>,
     sequence: Option<u64>,
