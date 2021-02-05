@@ -18,8 +18,8 @@ use std::sync::Arc;
 /// ```ignore
 /// let eventbus = Eventador::new(4)?;
 ///
-/// let subscriber = disruptor.async_subscriber::<usize>();
-/// let mut publisher: AsyncPublisher<usize> = disruptor.async_publisher();
+/// let subscriber = eventbus.async_subscriber::<usize>();
+/// let mut publisher: AsyncPublisher<usize> = eventbus.async_publisher();
 ///
 /// let mut i: usize = 1234;
 /// publisher.send(i).await?;
