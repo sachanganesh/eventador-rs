@@ -1,4 +1,4 @@
-//! This crate provides a lock-free Pub/Sub event-bus based on the Disruptor pattern from LMAX.
+//! This crate provides a lock-free Pub/Sub event-bus based on the eventador pattern from LMAX.
 //!
 //! Both sync and async APIs are available.
 //!
@@ -66,11 +66,11 @@
 //! How an event-bus handles the lagging-consumer problem should be left to the user to decide
 //! through configuration.
 //!
-//! ## LMAX Disruptor
+//! ## LMAX eventador
 //!
-//! The LMAX Disruptor serves as a basis for a lot of event-bus implementations, though the
-//! contemporary architecture of the Disruptor looks very different from the one presented in the
-//! outdated LMAX white-paper. Eventador draws from the principles of the current Disruptor
+//! The LMAX eventador serves as a basis for a lot of event-bus implementations, though the
+//! contemporary architecture of the eventador looks very different from the one presented in the
+//! outdated LMAX white-paper. Eventador draws from the principles of the current eventador
 //! architecture, but the similarities stop there.
 //!
 //! A sequencer atomically assigns an event to an index in the ring buffer on publishing of an
@@ -276,23 +276,23 @@ mod tests {
         let res = Eventador::new(4);
         assert!(res.is_ok());
 
-        let disruptor: Eventador = res.unwrap();
+        let eventador: Eventador = res.unwrap();
 
-        let subscriber = disruptor.subscribe::<usize>();
+        let subscriber = eventador.subscribe::<usize>();
         assert_eq!(1, subscriber.sequence());
 
         let mut i: usize = 1234;
-        disruptor.publish(i);
+        eventador.publish(i);
 
         let mut msg = subscriber.recv();
         assert_eq!(i, *msg);
 
         i += 1111;
-        let disruptor2 = disruptor.clone();
+        let eventador2 = eventador.clone();
 
         std::thread::spawn(move || {
             std::thread::sleep(std::time::Duration::from_secs(1));
-            disruptor2.publish(i);
+            eventador2.publish(i);
         });
 
         msg = subscriber.recv();
@@ -363,13 +363,13 @@ mod tests {
         assert!(res.is_ok());
         println!("Passed part 1!");
 
-        let disruptor: Eventador = res.unwrap();
+        let eventador: Eventador = res.unwrap();
 
-        let subscriber = disruptor.subscribe::<TestEnum>();
+        let subscriber = eventador.subscribe::<TestEnum>();
         assert_eq!(1, subscriber.sequence());
         println!("Passed part 2!");
 
-        disruptor.publish(TestEnum::SampleA);
+        eventador.publish(TestEnum::SampleA);
 
         let msg = subscriber.recv();
         assert_eq!(TestEnum::SampleA, *msg);
