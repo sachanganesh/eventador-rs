@@ -15,7 +15,6 @@ pub(crate) enum EventReadLabel<T> {
     Waiting,
 }
 
-
 /// A wrapper that can be de-referenced to access and read the event
 ///
 /// Implements the [`Deref`] trait to access the wrapped event.
@@ -95,8 +94,10 @@ impl EventEnvelope {
                 Ok(_) => {
                     self.sequence.store(sequence, Ordering::Release);
 
-                    unsafe {
-                        guard.defer_destroy(current_event);
+                    if !current_event.is_null() {
+                        unsafe {
+                            guard.defer_destroy(current_event);
+                        }
                     }
 
                     break;
