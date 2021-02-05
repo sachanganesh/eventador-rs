@@ -1,6 +1,6 @@
 [package]
 name = "eventador"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2018"
 authors = ["Sachandhan Ganesh <sachan.ganesh@gmail.com>"]
 description = "lock-free sync and async pub/sub event-bus based on the LMAX disruptor pattern"

@@ -12,7 +12,7 @@ This crate provides a lock-free Pub/Sub event-bus based on the Disruptor pattern
 
 Both sync and async APIs are available.
 
-# Why?
+## Why?
 
 Event-buses ease the development burden of concurrent programs by enabling concurrent
 application subroutines to interact and affect other subroutines through events. Of course,
@@ -22,13 +22,13 @@ Eventador supports the Rust model of *Choose Your Guarantees &trade;* by present
 configuration options for how to handle event publishing when consumers are lagging.
 Providing this configurable interface is currently a work in progress.
 
-# Examples
+## Examples
 
 Please use the provided [examples](#) for a more thorough approach on how to use this crate.
 
-# Design Considerations
+## Design Considerations
 
-## Ring Buffer
+### Ring Buffer
 
 Like Eventador, most event-bus implementations use some form of ring buffer for the underlying
 data structure to store published events. As such, an Eventador instance cannot indefinitely
@@ -47,7 +47,7 @@ Ultimately, there should not have to be a compromise between what a user wants t
 How an event-bus handles the lagging-consumer problem should be left to the user to decide
 through configuration.
 
-## LMAX Disruptor
+### LMAX Disruptor
 
 The LMAX Disruptor serves as a basis for a lot of event-bus implementations, though the
 contemporary architecture of the Disruptor looks very different from the one presented in the
@@ -61,18 +61,18 @@ Subscribers internally have their own sequencer to determine their last read eve
 buffer. On receiving a subscribed message, the sequencer is atomically updated to reflect that
 it can now receive the next event.
 
-## Lock-free
+### Lock-free
 
 Eventador has the potential to be a high-contention (aka bottlenecking) structure to a given
 concurrent program, so the implementation needs to handle contention as effectively as possible.
 Atomic CAS operations are generally faster than locking, and is the preferred approach to handle
 contention.
 
-## TypeId
+### TypeId
 This crate relies on the use of `TypeId` to determine what type an event is, and what types of
 events a subscriber subscribes to.
 
-### Future Goals
+## Future Goals
 
 The async implementation can be made more efficient by using the Waker
 pattern.
