@@ -1,4 +1,6 @@
 use crossbeam_epoch::{pin, Atomic, Guard, Owned};
+use futures::task::Waker;
+use lockfree::queue::Queue;
 use std::any::{Any, TypeId};
 use std::ops::Deref;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -7,12 +9,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 pub(crate) struct Event {
     pub type_id: TypeId,
     pub data: Box<dyn Any>,
-}
-
-pub(crate) enum EventReadLabel<T> {
-    Irrelevant,
-    Relevant(T),
-    Waiting,
 }
 
 /// A wrapper that can be de-referenced to access and read the event
@@ -44,6 +40,7 @@ impl<'a, T> Deref for EventRead<'a, T> {
 pub(crate) struct EventEnvelope {
     sequence: AtomicU64,
     event: Atomic<Event>,
+    subscribers: Queue<Option<Waker>>,
 }
 
 impl EventEnvelope {
@@ -51,11 +48,16 @@ impl EventEnvelope {
         Self {
             sequence: AtomicU64::new(0),
             event: Atomic::null(),
+            subscribers: Queue::new(),
         }
     }
 
     pub fn sequence(&self) -> u64 {
         self.sequence.load(Ordering::Acquire)
+    }
+
+    pub fn add_subscriber(&self, waker: Waker) {
+        self.subscribers.push(Some(waker));
     }
 
     pub unsafe fn read<'a, T: 'static>(&self) -> Option<EventRead<'a, T>> {
@@ -97,6 +99,12 @@ impl EventEnvelope {
                     if !current_event.is_null() {
                         unsafe {
                             guard.defer_destroy(current_event);
+                        }
+                    }
+
+                    for waker_opt in self.subscribers.pop_iter() {
+                        if let Some(waker) = waker_opt {
+                            waker.wake();
                         }
                     }
 

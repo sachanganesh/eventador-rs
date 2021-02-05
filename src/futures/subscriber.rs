@@ -1,4 +1,4 @@
-use crate::event::{EventRead, EventReadLabel};
+use crate::event::EventRead;
 use crate::ring_buffer::RingBuffer;
 use crate::sequence::Sequence;
 use futures::task::{Context, Poll};
@@ -53,71 +53,35 @@ where
     pub fn sequence(&self) -> u64 {
         self.sequence.get()
     }
-
-    /// Asynchronously read an event of the correct type from the event-bus
-    ///
-    /// # Example
-    ///
-    /// Basic usage:
-    ///
-    /// ```ignore
-    /// let eventbus = Eventador::new(4)?;
-    /// let subscriber = eventbus.subscribe::<usize>();
-    ///
-    /// let mut i: usize = 1234;
-    /// eventbus.publish(i);
-    ///
-    /// let mut msg = subscriber.recv().await.unwrap();
-    /// assert_eq!(i, *msg);
-    /// ```
-    ///
-    pub async fn recv(&self) -> Option<EventRead<'a, T>> {
-        loop {
-            let sequence = self.sequence.get();
-
-            loop {
-                match self.ring.get_event(sequence) {
-                    EventReadLabel::Irrelevant => {
-                        self.sequence.increment();
-                        break;
-                    }
-
-                    EventReadLabel::Relevant(event) => {
-                        self.sequence.increment();
-                        return Some(event);
-                    }
-
-                    EventReadLabel::Waiting => {
-                        continue;
-                    }
-                }
-            }
-        }
-    }
 }
 
 impl<'a, T: 'static> Stream for AsyncSubscriber<'a, T> {
     type Item = EventRead<'a, T>;
 
-    // @todo: Needs thorough testing due to failed prior tests
-    fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         loop {
             let sequence = self.sequence.get();
 
-            match self.ring.get_event(sequence) {
-                EventReadLabel::Irrelevant => {
-                    self.sequence.increment();
-                    continue;
-                }
+            let envelope = self
+                .ring
+                .get_envelope(sequence)
+                .expect("ring buffer was not pre-populated with empty event envelopes")
+                .clone();
 
-                EventReadLabel::Relevant(event) => {
-                    self.sequence.increment();
+            let envelope_sequence = envelope.sequence();
+
+            if sequence == envelope_sequence {
+                self.sequence.increment();
+                let event_opt: Option<EventRead<T>> = unsafe { envelope.read() };
+
+                if let Some(event) = event_opt {
                     return Poll::Ready(Some(event));
                 }
-
-                EventReadLabel::Waiting => {
-                    return Poll::Pending;
-                }
+            } else if sequence > envelope_sequence {
+                envelope.add_subscriber(cx.waker().clone());
+                return Poll::Pending;
+            } else {
+                todo!()
             }
         }
     }

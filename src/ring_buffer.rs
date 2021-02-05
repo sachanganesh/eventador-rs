@@ -1,11 +1,13 @@
-use crate::event::{EventEnvelope, EventRead, EventReadLabel};
+use crate::event::{EventEnvelope, EventRead};
 use crate::sequence::sequencer::Sequencer;
 use crossbeam_utils::CachePadded;
 use std::sync::Arc;
 
+pub(crate) type EventWrapper = CachePadded<Arc<EventEnvelope>>;
+
 pub struct RingBuffer {
     capacity: u64,
-    buffer: Vec<CachePadded<Arc<EventEnvelope>>>,
+    buffer: Vec<EventWrapper>,
     sequencer: Sequencer,
 }
 
@@ -43,7 +45,7 @@ impl RingBuffer {
         (sequence & (self.capacity - 1)) as usize
     }
 
-    pub(crate) fn get_envelope(&self, sequence: u64) -> Option<CachePadded<Arc<EventEnvelope>>> {
+    pub(crate) fn get_envelope(&self, sequence: u64) -> Option<EventWrapper> {
         let idx = self.idx_from_sequence(sequence);
 
         if let Some(envelope) = self.buffer.get(idx).clone() {
@@ -53,28 +55,22 @@ impl RingBuffer {
         }
     }
 
-    pub(crate) fn get_event<'a, T: 'static>(
-        &self,
-        sequence: u64,
-    ) -> EventReadLabel<EventRead<'a, T>> {
-        let idx = self.idx_from_sequence(sequence);
-
+    pub(crate) fn get_event<'a, T: 'static>(&self, sequence: u64) -> Option<EventRead<'a, T>> {
         let envelope = self
-            .buffer
-            .get(idx)
+            .get_envelope(sequence)
             .expect("ring buffer was not pre-populated with empty event envelopes")
             .clone();
 
-        if sequence == envelope.sequence() {
-            let event_opt: Option<EventRead<T>> = unsafe { envelope.read() };
+        loop {
+            if sequence == envelope.sequence() {
+                let event_opt: Option<EventRead<T>> = unsafe { envelope.read() };
 
-            if let Some(event) = event_opt {
-                EventReadLabel::Relevant(event)
-            } else {
-                EventReadLabel::Irrelevant
+                return if let Some(event) = event_opt {
+                    Some(event)
+                } else {
+                    None
+                }
             }
-        } else {
-            EventReadLabel::Waiting
         }
     }
 }

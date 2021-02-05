@@ -265,8 +265,9 @@ impl From<Arc<RingBuffer>> for Eventador {
 #[cfg(test)]
 mod tests {
     use crate::futures::publisher::AsyncPublisher;
-    use crate::Eventador;
+    use crate::{Eventador, StreamExt};
     use async_channel::{unbounded, RecvError};
+    use futures::future::{AbortHandle, Abortable};
     use futures::SinkExt;
     use ntest::timeout;
 
@@ -301,13 +302,14 @@ mod tests {
     #[async_std::test]
     #[timeout(5000)]
     async fn async_publish() {
+        println!("Starting test!");
         let res = Eventador::new(4);
         assert!(res.is_ok());
 
-        let disruptor: Eventador = res.unwrap();
+        let eventador: Eventador = res.unwrap();
 
-        let subscriber = disruptor.async_subscriber::<usize>();
-        let mut publisher: AsyncPublisher<usize> = disruptor.async_publisher();
+        let mut subscriber = eventador.async_subscriber::<usize>();
+        let mut publisher: AsyncPublisher<usize> = eventador.async_publisher();
 
         let (sender, mut receiver) = unbounded::<Result<usize, RecvError>>();
 
@@ -315,23 +317,27 @@ mod tests {
         let mut sent = sender.send(Ok(i)).await;
         assert!(sent.is_ok());
 
-        let handle = async_std::task::spawn(async move {
-            publisher.send_all(&mut receiver).await.unwrap();
-        });
+        let (handle, reg) = AbortHandle::new_pair();
+        async_std::task::spawn(Abortable::new(
+            async move {
+                publisher.send_all(&mut receiver).await.unwrap();
+            },
+            reg,
+        ));
 
-        let mut msg = subscriber.recv().await.unwrap();
+        let mut msg = subscriber.next().await.unwrap();
         assert_eq!(i, *msg);
         println!("Passed part 1!");
 
         i += 1111;
-        let disruptor2 = disruptor.clone();
+        let eventador2 = eventador.clone();
 
         async_std::task::spawn(async move {
             async_std::task::sleep(std::time::Duration::from_secs(1)).await;
-            disruptor2.publish(i);
+            eventador2.publish(i);
         });
 
-        msg = subscriber.recv().await.unwrap();
+        msg = subscriber.next().await.unwrap();
         assert_eq!(i, *msg);
         println!("Passed part 2!");
 
@@ -339,11 +345,11 @@ mod tests {
         sent = sender.send(Ok(i)).await;
         assert!(sent.is_ok());
 
-        msg = subscriber.recv().await.unwrap();
+        msg = subscriber.next().await.unwrap();
         assert_eq!(i, *msg);
         println!("Passed part 3! Done.");
 
-        assert!(handle.cancel().await.is_none());
+        handle.abort();
     }
 
     #[derive(Debug, Eq, PartialEq)]
