@@ -12,6 +12,39 @@ This crate provides a lock-free Pub/Sub event-bus based on the Disruptor pattern
 
 Both sync and async APIs are available.
 
+## Examples
+
+Basic sync usage:
+
+```rust
+let eventbus = Eventador::new(4)?;
+let subscriber = eventbus.subscribe::<usize>();
+
+let mut i: usize = 1234;
+eventbus.publish(i);
+
+let mut msg = subscriber.recv().unwrap();
+assert_eq!(i, *msg);
+```
+
+Basic async usage:
+
+```rust
+let eventbus = Eventador::new(4)?;
+
+let subscriber = eventbus.async_subscriber::<usize>();
+let mut publisher: AsyncPublisher<usize> = eventbus.async_publisher();
+
+let mut i: usize = 1234;
+publisher.send(i).await?;
+
+let mut msg = subscriber.recv().await.unwrap();
+assert_eq!(i, *msg);
+```
+
+Please use the provided [example programs](#) for a more thorough approach on how to use this
+crate.
+
 ## Why?
 
 Event-buses ease the development burden of concurrent programs by enabling concurrent
@@ -21,10 +54,6 @@ a poor implementation can become a serious bottleneck depending on the applicati
 Eventador supports the Rust model of *Choose Your Guarantees &trade;* by presenting
 configuration options for how to handle event publishing when consumers are lagging.
 Providing this configurable interface is currently a work in progress.
-
-## Examples
-
-Please use the provided [examples](#) for a more thorough approach on how to use this crate.
 
 ## Design Considerations
 
