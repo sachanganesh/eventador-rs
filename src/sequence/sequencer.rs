@@ -6,16 +6,16 @@ pub struct Sequencer {
     cursor: Sequence,
     gating_sequence_cache: Arc<Sequence>,
     gating_sequences: SequenceGroup,
-    buffer_size: u64,
+    ring_capacity: u64,
 }
 
 impl Sequencer {
-    pub fn new(buffer_size: u64) -> Self {
+    pub fn new(ring_capacity: u64) -> Self {
         Self {
             cursor: Sequence::with_value(0),
             gating_sequence_cache: Arc::new(Sequence::with_value(0)),
             gating_sequences: SequenceGroup::new(),
-            buffer_size,
+            ring_capacity,
         }
     }
 
@@ -33,7 +33,7 @@ impl Sequencer {
     }
 
     pub fn next_from(&self, n: u64) -> anyhow::Result<u64> {
-        if n < 1 || n > self.buffer_size {
+        if n < 1 || n > self.ring_capacity {
             return Err(anyhow::Error::msg("n must be > 0 and < buffer_size"));
         }
 
@@ -42,20 +42,20 @@ impl Sequencer {
             let icurrent: i64 = current as i64;
             let next: i64 = (current + n) as i64;
 
-            let wrap_point: i64 = next - self.buffer_size as i64;
+            let wrap_point: i64 = next - self.ring_capacity as i64;
             let cached_gating_sequence: i64 = self.gating_sequence_cache.get() as i64;
 
-            if wrap_point > cached_gating_sequence || cached_gating_sequence > icurrent {
+            if wrap_point >= cached_gating_sequence || cached_gating_sequence > icurrent {
                 let gating_sequence = self.gating_sequences.minimum_sequence(current);
 
                 if wrap_point > gating_sequence as i64 {
-                    // async_std::task::block_on(async_std::task::sleep(Duration::from_nanos(1)));
+                    // @todo handle wait strategy
                     continue;
                 }
 
                 self.gating_sequence_cache.set(gating_sequence);
             } else if self.cursor.compare_and_swap(current, next as u64) {
-                break Ok(next as u64);
+                return Ok(next as u64);
             }
         }
     }

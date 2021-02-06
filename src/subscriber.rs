@@ -85,9 +85,9 @@ where
 
             let envelope_sequence = envelope.sequence();
             if sequence == envelope_sequence {
-                self.sequence.increment();
                 let event_opt: Option<EventRead<T>> = unsafe { envelope.read() };
 
+                self.sequence.increment();
                 if let Some(event) = event_opt {
                     return event;
                 }
@@ -97,7 +97,8 @@ where
 
                 parker.park();
             } else {
-                self.sequence.increment(); // @todo you get here when publisher overwrites an event that has not been read yet
+                // self.sequence.increment(); // @todo you get here when publisher overwrites an event that has not been read yet
+                unreachable!()
             }
         }
     }

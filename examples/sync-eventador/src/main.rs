@@ -9,26 +9,24 @@ fn main() -> anyhow::Result<()> {
     let subscriber_thread = std::thread::spawn(move || {
         let mut event_ctr = 0;
         while event_ctr < NUM_EVENTS {
-            // std::thread::sleep(std::time::Duration::from_secs(1));
+            // std::thread::sleep(std::time::Duration::from_micros(10));
             let event = subscriber.recv();
             println!("Received event: {}", *event);
+            assert_eq!(event_ctr + 1, *event);
             event_ctr += 1;
         }
     });
 
-    let publisher_thread = std::thread::spawn(move || {
+    let _publisher_thread = std::thread::spawn(move || {
         let mut i: usize = 1;
         while i <= NUM_EVENTS {
-            // std::thread::sleep(std::time::Duration::from_micros(100));
+            // std::thread::sleep(std::time::Duration::from_micros(10));
             eventbus.publish(i);
             println!("Published event: {}", i);
             i += 1;
         }
     });
 
-    publisher_thread
-        .join()
-        .expect("Join of publisher thread was unsuccessful");
     subscriber_thread
         .join()
         .expect("Join of subscriber thread was unsuccessful");
