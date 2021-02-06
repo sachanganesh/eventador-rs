@@ -13,6 +13,11 @@ license = "Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[workspace]
+members = [
+    "examples/*"
+]
+
 [dependencies]
 anyhow = "1.0"
 async-channel = "1.5.1"

@@ -194,11 +194,12 @@ impl Eventador {
     ///
     pub fn subscribe<T: 'static + Send>(&self) -> Subscriber<T> {
         let sequence = Arc::new(Sequence::with_value(self.ring.sequencer().get() + 1));
+
         self.ring
             .sequencer()
             .register_gating_sequence(sequence.clone());
 
-        Subscriber::new(self.ring.as_ref(), sequence)
+        Subscriber::new(self.ring.clone(), sequence)
     }
 
     /// Creates an [`AsyncPublisher`] that can publish to the event-bus asynchronously
@@ -238,7 +239,7 @@ impl Eventador {
     /// assert_eq!(i, *msg);
     /// ```
     ///
-    pub fn async_subscriber<T: 'static + Send + Unpin>(&self) -> AsyncSubscriber<T> {
+    pub fn async_subscriber<T: Send + Unpin>(&self) -> AsyncSubscriber<T> {
         let sequence = Arc::new(Sequence::with_value(self.ring.sequencer().get() + 1));
         self.ring
             .sequencer()
@@ -273,7 +274,7 @@ mod tests {
 
     #[test]
     fn publish_and_subscribe() {
-        let res = Eventador::new(4);
+        let res = Eventador::new(2);
         assert!(res.is_ok());
 
         let eventador: Eventador = res.unwrap();

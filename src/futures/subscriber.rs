@@ -1,11 +1,11 @@
 use crate::event::EventRead;
 use crate::ring_buffer::RingBuffer;
 use crate::sequence::Sequence;
+use crate::subscriber::SubscriberAlert;
 use futures::task::{Context, Poll, Waker};
 use futures::Stream;
 use std::pin::Pin;
 use std::sync::Arc;
-use crate::subscriber::SubscriberAlert;
 
 impl SubscriberAlert for Waker {
     fn alert(&self) {
@@ -43,7 +43,7 @@ pub struct AsyncSubscriber<'a, T> {
 
 impl<'a, T> AsyncSubscriber<'a, T>
 where
-    T: 'static + Send,
+    T: Send,
 {
     pub(crate) fn new(ring: Arc<RingBuffer>, sequence: Arc<Sequence>) -> Self {
         Self {

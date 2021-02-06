@@ -38,17 +38,17 @@ impl SubscriberAlert for Unparker {
 /// assert_eq!(i, *msg);
 /// ```
 ///
-pub struct Subscriber<'a, T> {
-    ring: &'a RingBuffer,
+pub struct Subscriber<T> {
+    ring: Arc<RingBuffer>,
     sequence: Arc<Sequence>,
     _marker: std::marker::PhantomData<T>,
 }
 
-impl<'a, T> Subscriber<'a, T>
+impl<T: 'static> Subscriber<T>
 where
-    T: 'static + Send,
+    T: Send,
 {
-    pub(crate) fn new(ring: &'a RingBuffer, sequence: Arc<Sequence>) -> Self {
+    pub(crate) fn new(ring: Arc<RingBuffer>, sequence: Arc<Sequence>) -> Self {
         Self {
             ring,
             sequence,
@@ -105,7 +105,7 @@ where
 
                 parker.park();
             } else {
-                todo!()
+                self.sequence.increment(); // @todo you get here when publisher overwrites an event that has not been read yet
             }
         }
     }
