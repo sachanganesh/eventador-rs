@@ -27,12 +27,7 @@ impl SequenceGroup {
     pub fn minimum_sequence(&self, minimum: u64) -> u64 {
         let mut minimum = minimum;
 
-        if let Some(sequence) = self.set
-            .iter()
-            .map(|sequence| {
-                sequence.get()
-            })
-            .min() {
+        if let Some(sequence) = self.set.iter().map(|sequence| sequence.get()).min() {
             minimum = std::cmp::min(minimum, sequence);
         }
 

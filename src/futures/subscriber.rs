@@ -1,7 +1,7 @@
+use crate::alertable::Alertable;
 use crate::event::EventRead;
 use crate::ring_buffer::RingBuffer;
 use crate::sequence::Sequence;
-use crate::alertable::Alertable;
 use futures::task::{Context, Poll, Waker};
 use futures::Stream;
 use std::pin::Pin;
