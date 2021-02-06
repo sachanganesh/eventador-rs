@@ -1,18 +1,10 @@
+use std::sync::Arc;
+
+use crossbeam::sync::Parker;
+
 use crate::event::EventRead;
 use crate::ring_buffer::RingBuffer;
 use crate::sequence::Sequence;
-use crossbeam::sync::{Parker, Unparker};
-use std::sync::Arc;
-
-pub(crate) trait SubscriberAlert {
-    fn alert(&self);
-}
-
-impl SubscriberAlert for Unparker {
-    fn alert(&self) {
-        self.unpark();
-    }
-}
 
 /// A handle to receive events that were subscribed to from the event-bus
 ///

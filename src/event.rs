@@ -1,4 +1,4 @@
-use crate::subscriber::SubscriberAlert;
+use crate::alertable::Alertable;
 use crossbeam::epoch::{pin, Atomic, Guard, Owned};
 use lockfree::queue::Queue;
 use std::any::{Any, TypeId};
@@ -40,7 +40,7 @@ impl<'a, T> Deref for EventRead<'a, T> {
 pub(crate) struct EventEnvelope {
     sequence: AtomicU64,
     event: Atomic<Event>,
-    subscribers: Queue<Option<Box<dyn SubscriberAlert>>>,
+    subscribers: Queue<Option<Box<dyn Alertable>>>,
 }
 
 impl EventEnvelope {
@@ -56,7 +56,7 @@ impl EventEnvelope {
         self.sequence.load(Ordering::Acquire)
     }
 
-    pub fn add_subscriber(&self, alerter: Box<dyn SubscriberAlert>) {
+    pub fn add_subscriber(&self, alerter: Box<dyn Alertable>) {
         self.subscribers.push(Some(alerter));
     }
 

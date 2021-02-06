@@ -92,6 +92,7 @@
 //! events a subscriber subscribes to.
 //!
 
+mod alertable;
 mod event;
 mod futures;
 mod ring_buffer;

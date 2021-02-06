@@ -1,13 +1,13 @@
 use crate::event::EventRead;
 use crate::ring_buffer::RingBuffer;
 use crate::sequence::Sequence;
-use crate::subscriber::SubscriberAlert;
+use crate::alertable::Alertable;
 use futures::task::{Context, Poll, Waker};
 use futures::Stream;
 use std::pin::Pin;
 use std::sync::Arc;
 
-impl SubscriberAlert for Waker {
+impl Alertable for Waker {
     fn alert(&self) {
         self.wake_by_ref();
     }
