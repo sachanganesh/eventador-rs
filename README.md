@@ -59,9 +59,10 @@ Event-buses ease the development burden of concurrent programs by enabling concu
 application subroutines to interact and affect other subroutines through events. Of course,
 a poor implementation can become a serious bottleneck depending on the application's needs.
 
-Eventador supports the Rust model of *Choose Your Guarantees &trade;* by presenting
-configuration options for how to handle event publishing when consumers are lagging.
-Providing this configurable interface is currently a work in progress.
+Eventador embraces the Rust model of *Choose Your Guarantees &trade;* by offering different
+policies for publishing when subscribers are lagging. These are represented as
+[WaitStrategies](https://docs.rs/eventador/latest/eventador/enum.WaitStrategy), with the
+default being to wait for all subscribers to read an event before it is overwritten.
 
 ## Design Considerations
 
@@ -114,24 +115,12 @@ TypeId than an Enum variant. This means that a subscriber must subscribe to the 
 ignore any variants it's not interested in that it receives. Likewise, the publisher must
 publish events as the Enum type and not the variant in order to maintain that consistency.
 
-## Future Goals
-
-The default strategy when a subscriber is lagging (thus preventing new
-events from being published), is to make publishers wait until the
-subscriber starts catching up. This may not be the best design choice
-for all use cases. The Wait Strategy must be made configurable to make
-Eventador versatile to any use case. Some example wait-strategies are
-wait-for-all (default), no-wait, wait-for-duration,
-wait-for-n-publishers, etc.
-
-Testing, and most importantly, benchmarking, are not
-fully realized.
-
 ## Feature Status
+
+Testing, and most importantly, benchmarking, are not fully realized.
 
 | Feature                                             	| Status 	|
 |-----------------------------------------------------	|--------	|
 | Sync MPMC Pub/Sub 	                                |     ✓  	|
 | Async MPMC Pub/Sub 	                                |     ✓  	|
-| Wait Strategies                                       |       	|
-| Event Sourcing                                        |       	|
+| Wait Strategies                                       |     ✓ 	|

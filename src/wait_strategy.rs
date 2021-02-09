@@ -1,9 +1,16 @@
 use std::time::Duration;
 
+/// Declares the policy for what producers should do when consumers are lagging.
+///
 #[derive(Copy, Clone)]
 pub enum WaitStrategy {
+    /// *Default*: Wait for all subscribers to read the event before overwriting it.
     AllSubscribers,
+
+    /// Don't wait for any reason and overwrite when ready.
     NoWait,
+
+    /// Wait for a specified duration of time before overwriting it.
     WaitForDuration(Duration),
 }
 

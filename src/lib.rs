@@ -49,9 +49,10 @@
 //! application subroutines to interact and affect other subroutines through events. Of course,
 //! a poor implementation can become a serious bottleneck depending on the application's needs.
 //!
-//! Eventador supports the Rust model of *Choose Your Guarantees &trade;* by presenting
-//! configuration options for how to handle event publishing when consumers are lagging.
-//! Providing this configurable interface is currently a work in progress.
+//! Eventador embraces the Rust model of *Choose Your Guarantees &trade;* by offering different
+//! policies for publishing when subscribers are lagging. These are represented as
+//! [WaitStrategies](`WaitStrategy`), with the default being to wait for all subscribers to read
+//! an event before it is overwritten.
 //!
 //! # Design Considerations
 //!
@@ -152,6 +153,9 @@ impl Eventador {
     ///
     /// **The capacity is required to be a power of 2.**
     ///
+    /// This uses the default wait-strategy of [`WaitStrategy::AllSubscribers`], which will ensure
+    /// a publisher can't overwrite an event in the ring until all subscribers have read it.
+    ///
     /// # Example
     ///
     /// Basic usage:
@@ -166,6 +170,18 @@ impl Eventador {
         })
     }
 
+    /// Creates a new Eventador event-bus with a specific [`WaitStrategy`] for publishers.
+    ///
+    /// **The capacity is required to be a power of 2.**
+    ///
+    /// # Example
+    ///
+    /// Basic usage:
+    ///
+    /// ```ignore
+    /// let eventbus = Eventador::new(4, WaitStrategy::AllSubscribers)?;
+    /// ```
+    ///
     pub fn with_strategy(capacity: u64, wait_strategy: WaitStrategy) -> anyhow::Result<Self> {
         Ok(Self {
             ring: Arc::new(RingBuffer::new(capacity, wait_strategy)?),
