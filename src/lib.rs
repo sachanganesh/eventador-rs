@@ -106,7 +106,7 @@
 //! publish events as the Enum type and not the variant in order to maintain that consistency.
 //!
 
-#[cfg_attr(docsrs, feature(doc_cfg))]
+#![feature(doc_cfg)]
 
 mod alertable;
 mod event;
@@ -117,15 +117,15 @@ mod subscriber;
 mod wait_strategy;
 
 #[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[doc(cfg(feature = "async"))]
 mod futures;
 
 #[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[doc(cfg(feature = "async"))]
 pub use crate::futures::{AsyncPublisher, AsyncSubscriber, PublishError};
 
 #[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[doc(cfg(feature = "async"))]
 pub use ::futures::{SinkExt, StreamExt};
 
 pub use event::EventRead;
@@ -295,7 +295,7 @@ impl Eventador {
     /// ```
     ///
     #[cfg(feature = "async")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+    #[doc(cfg(feature = "async"))]
     pub fn async_publisher<T: 'static + Send + Unpin>(
         &self,
         buffer_size: usize,
@@ -324,7 +324,7 @@ impl Eventador {
     /// ```
     ///
     #[cfg(feature = "async")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+    #[doc(cfg(feature = "async"))]
     pub fn async_subscriber<T: Send + Unpin>(&self) -> AsyncSubscriber<T> {
         let sequence = Arc::new(Sequence::with_value(self.ring.sequencer().get() + 1));
         self.ring
