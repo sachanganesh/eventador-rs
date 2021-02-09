@@ -89,7 +89,7 @@
 //!
 //! ## TypeId
 //! This crate relies on the use of `TypeId` to determine what type an event is, and what types of
-//! events a subscriber subscribes to.
+//! events a subscriber is subscribed to.
 //!
 
 mod alertable;
@@ -108,7 +108,7 @@ use crate::ring_buffer::RingBuffer;
 use crate::sequence::Sequence;
 use std::sync::Arc;
 
-/// A lock-free and thread-safe event-bus implementation
+/// A lock-free and thread-safe event-bus implementation.
 ///
 /// # Example
 ///
@@ -131,7 +131,7 @@ pub struct Eventador {
 }
 
 impl Eventador {
-    /// Creates a new Eventador event-bus
+    /// Creates a new Eventador event-bus.
     ///
     /// **The capacity is required to be a power of 2.**
     ///
@@ -149,7 +149,7 @@ impl Eventador {
         })
     }
 
-    /// Publishes an event on the event-bus
+    /// Synchronously publishes an event on the event-bus.
     ///
     /// # Example
     ///
@@ -170,7 +170,7 @@ impl Eventador {
         }
     }
 
-    /// Creates a [`Subscriber`] that is subscribed to events of the provided type
+    /// Creates a [`Subscriber`] that is subscribed to events of the provided type.
     ///
     /// The [`Subscriber`] will not receive intended events that were published to the event-bus
     /// before time of subscription. It will only receive intended events that are published after
@@ -203,7 +203,10 @@ impl Eventador {
         Subscriber::new(self.ring.clone(), sequence)
     }
 
-    /// Creates an [`AsyncPublisher`] that can publish to the event-bus asynchronously
+    /// Creates an [`AsyncPublisher`] that can publish to the event-bus asynchronously.
+    ///
+    /// The buffer size indicates the number of events that can be buffered until a flush is made
+    /// to the event bus. Until events are flushed to the event bus, they are not yet published.
     ///
     /// # Example
     ///
@@ -217,11 +220,14 @@ impl Eventador {
     /// publisher.send(i).await?;
     /// ```
     ///
-    pub fn async_publisher<T: 'static + Send + Unpin>(&self) -> AsyncPublisher<T> {
-        AsyncPublisher::new(self.ring.clone())
+    pub fn async_publisher<T: 'static + Send + Unpin>(
+        &self,
+        buffer_size: usize,
+    ) -> AsyncPublisher<T> {
+        AsyncPublisher::new(self.ring.clone(), buffer_size)
     }
 
-    /// Creates an [`AsyncSubscriber`] that can subscribe to events and receive them asynchronously
+    /// Creates an [`AsyncSubscriber`] that can subscribe to events and receive them asynchronously.
     ///
     /// # Example
     ///
@@ -236,7 +242,7 @@ impl Eventador {
     /// let mut i: usize = 1234;
     /// publisher.send(i).await?;
     ///
-    /// let mut msg = subscriber.recv().await.unwrap();
+    /// let mut msg = subscriber.next().await.unwrap();
     /// assert_eq!(i, *msg);
     /// ```
     ///
@@ -311,7 +317,7 @@ mod tests {
         let eventador: Eventador = res.unwrap();
 
         let mut subscriber = eventador.async_subscriber::<usize>();
-        let mut publisher: AsyncPublisher<usize> = eventador.async_publisher();
+        let mut publisher: AsyncPublisher<usize> = eventador.async_publisher(4);
 
         let (sender, mut receiver) = unbounded::<Result<usize, RecvError>>();
 

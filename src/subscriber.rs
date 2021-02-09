@@ -3,10 +3,10 @@ use std::sync::Arc;
 use crossbeam::sync::Parker;
 
 use crate::event::EventRead;
-use crate::ring_buffer::RingBuffer;
+use crate::ring_buffer::{RingBuffer, EventWrapper};
 use crate::sequence::Sequence;
 
-/// A handle to receive events that were subscribed to from the event-bus
+/// A handle to receive events that were subscribed to from the event-bus.
 ///
 /// The [`Subscriber`] will not receive intended events that were published to the event-bus
 /// before time of subscription. It will only receive intended events that are published after the
@@ -48,7 +48,7 @@ where
         }
     }
 
-    /// Get the current internal sequence number for the [`Subscriber`]
+    /// Get the current internal sequence number for the [`Subscriber`].
     ///
     /// This sequence number signifies what events the Subscriber may have already read, and any
     /// events with a sequence value higher than this are events that are still unread.
@@ -56,7 +56,15 @@ where
         self.sequence.get()
     }
 
-    /// Synchronously read an event of the correct type from the event-bus
+    pub(crate) fn read_event<'b>(&self, envelope: EventWrapper) -> Option<EventRead<'b, T>> {
+        let event_opt: Option<EventRead<T>> = unsafe { envelope.read() };
+        envelope.stop_waiting();
+
+        self.sequence.increment();
+        return event_opt
+    }
+
+    /// Synchronously read an event of the correct type from the event-bus.
     ///
     /// # Example
     ///
@@ -83,12 +91,11 @@ where
                 .expect("ring buffer was not pre-populated with empty event envelopes")
                 .clone();
 
+            envelope.start_waiting();
+
             let envelope_sequence = envelope.sequence();
             if sequence == envelope_sequence {
-                let event_opt: Option<EventRead<T>> = unsafe { envelope.read() };
-
-                self.sequence.increment();
-                if let Some(event) = event_opt {
+                if let Some(event) = self.read_event(envelope) {
                     return event;
                 }
             } else if sequence > envelope_sequence {
@@ -96,8 +103,12 @@ where
                 envelope.add_subscriber(Box::new(parker.unparker().clone()));
 
                 parker.park();
+
+                if let Some(event) = self.read_event(envelope) {
+                    return event;
+                }
             } else {
-                // self.sequence.increment(); // @todo you get here when publisher overwrites an event that has not been read yet
+                // @todo you get here when publisher overwrites an event that has not been read yet
                 unreachable!()
             }
         }

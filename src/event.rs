@@ -11,7 +11,7 @@ pub(crate) struct Event {
     pub data: Box<dyn Any>,
 }
 
-/// A wrapper that can be de-referenced to access and read the event
+/// A wrapper that can be de-referenced to access and read the event.
 ///
 /// Implements the [`Deref`] trait to access the wrapped event.
 ///
@@ -40,6 +40,7 @@ impl<'a, T> Deref for EventRead<'a, T> {
 pub(crate) struct EventEnvelope {
     sequence: AtomicU64,
     event: Atomic<Event>,
+    num_waiting: AtomicU64,
     subscribers: Queue<Option<Box<dyn Alertable>>>,
 }
 
@@ -48,12 +49,21 @@ impl EventEnvelope {
         Self {
             sequence: AtomicU64::new(0),
             event: Atomic::null(),
+            num_waiting: AtomicU64::new(0),
             subscribers: Queue::new(),
         }
     }
 
     pub fn sequence(&self) -> u64 {
         self.sequence.load(Ordering::Acquire)
+    }
+
+    pub fn start_waiting(&self) {
+        self.num_waiting.fetch_add(1, Ordering::Acquire);
+    }
+
+    pub fn stop_waiting(&self) {
+        self.num_waiting.fetch_sub(1, Ordering::Release);
     }
 
     pub fn add_subscriber(&self, alerter: Box<dyn Alertable>) {
@@ -102,14 +112,24 @@ impl EventEnvelope {
                         }
                     }
 
-                    for alerter_opt in self.subscribers.pop_iter() {
-                        if let Some(alerter) = alerter_opt {
-                            alerter.alert();
+                    loop {
+                        if self.num_waiting.compare_and_swap(0, 0, Ordering::AcqRel) == 0 {
+                            break;
+                        } else {
+                            let num_waiting = self.num_waiting.load(Ordering::Acquire);
+
+                            for alerter_opt in
+                                self.subscribers.pop_iter().take(num_waiting as usize)
+                            {
+                                if let Some(alerter) = alerter_opt {
+                                    alerter.alert();
+                                }
+                            }
                         }
                     }
-
                     break;
                 }
+
                 Err(cas_err) => {
                     event = cas_err.new;
                 }

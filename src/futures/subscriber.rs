@@ -1,6 +1,6 @@
 use crate::alertable::Alertable;
 use crate::event::EventRead;
-use crate::ring_buffer::RingBuffer;
+use crate::ring_buffer::{EventWrapper, RingBuffer};
 use crate::sequence::Sequence;
 use futures::task::{Context, Poll, Waker};
 use futures::Stream;
@@ -13,9 +13,9 @@ impl Alertable for Waker {
     }
 }
 
-/// A handle to subscribe to events and receive them asynchronously
+/// A handle to subscribe to events and receive them asynchronously.
 ///
-/// Implements the [`Stream`] trait to offer intended events from the event-bus as an asynchronous
+/// Implements the [`Stream`] trait to offer subscribed events from the event-bus as an asynchronous
 /// stream.
 ///
 /// # Example
@@ -38,8 +38,11 @@ impl Alertable for Waker {
 pub struct AsyncSubscriber<'a, T> {
     ring: Arc<RingBuffer>,
     sequence: Arc<Sequence>,
+    current_event: Option<EventWrapper>,
     _marker: std::marker::PhantomData<&'a T>,
 }
+
+unsafe impl<'a, T> Send for AsyncSubscriber<'a, T> {}
 
 impl<'a, T> AsyncSubscriber<'a, T>
 where
@@ -49,11 +52,12 @@ where
         Self {
             ring,
             sequence,
+            current_event: None,
             _marker: std::marker::PhantomData,
         }
     }
 
-    /// Get the current internal sequence number for the [`AsyncSubscriber`]
+    /// Get the current internal sequence number for the [`AsyncSubscriber`].
     ///
     /// This sequence number signifies what events the Subscriber may have already read, and any
     /// events with a sequence value higher than this are events that are still unread.
@@ -65,30 +69,39 @@ where
 impl<'a, T: 'static> Stream for AsyncSubscriber<'a, T> {
     type Item = EventRead<'a, T>;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         loop {
             let sequence = self.sequence.get();
+            let envelope = if let Some(envelope) = self.current_event.take() {
+                envelope
+            } else {
+                let envelope = self
+                    .ring
+                    .get_envelope(sequence)
+                    .expect("ring buffer was not pre-populated with empty event envelopes")
+                    .clone();
 
-            let envelope = self
-                .ring
-                .get_envelope(sequence)
-                .expect("ring buffer was not pre-populated with empty event envelopes")
-                .clone();
+                envelope.start_waiting();
+                envelope
+            };
 
             let envelope_sequence = envelope.sequence();
-
             if sequence == envelope_sequence {
-                self.sequence.increment();
                 let event_opt: Option<EventRead<T>> = unsafe { envelope.read() };
+                envelope.stop_waiting();
 
+                self.sequence.increment();
                 if let Some(event) = event_opt {
                     return Poll::Ready(Some(event));
                 }
+                println!("Uh oh");
             } else if sequence > envelope_sequence {
                 envelope.add_subscriber(Box::new(cx.waker().clone()));
+                self.current_event.replace(envelope);
                 return Poll::Pending;
             } else {
-                todo!()
+                // @todo you get here when publisher overwrites an event that has not been read yet
+                unreachable!()
             }
         }
     }

@@ -14,7 +14,7 @@ impl std::fmt::Display for AsyncPublishError {
     }
 }
 
-/// A handle to asynchronously publish to the event-bus
+/// A handle to asynchronously publish to the event-bus.
 ///
 /// Implements the [`Sink`] trait to asynchronously publish a stream of events to the event-bus.
 ///
@@ -32,26 +32,31 @@ impl std::fmt::Display for AsyncPublishError {
 ///
 pub struct AsyncPublisher<T> {
     ring: Arc<RingBuffer>,
-    sequence: Option<u64>,
-    event: Option<T>,
+    buffer_size: usize,
+    events: Vec<T>,
 }
 
 impl<T: 'static + Unpin> AsyncPublisher<T> {
-    pub(crate) fn new(ring: Arc<RingBuffer>) -> Self {
+    pub(crate) fn new(ring: Arc<RingBuffer>, buffer: usize) -> Self {
+        let buffer = if buffer == 0 { buffer + 1 } else { buffer };
+
         Self {
             ring,
-            sequence: None,
-            event: None,
+            buffer_size: buffer,
+            events: Vec::with_capacity(buffer),
         }
     }
 
-    pub(crate) fn write_to_ring(&mut self) {
-        if let Some(sequence) = self.sequence.take() {
-            if let Some(envelope) = self.ring.get_envelope(sequence) {
-                if let Some(event) = self.event.take() {
-                    envelope.overwrite(sequence, event);
-                }
-            }
+    pub(crate) fn publish(&mut self) {
+        while let Some(event) = self.events.pop() {
+            let sequence = self.ring.next();
+
+            let envelope = self
+                .ring
+                .get_envelope(sequence)
+                .expect("ring buffer was not pre-populated with empty event envelopes");
+
+            envelope.overwrite(sequence, event);
         }
     }
 }
@@ -60,18 +65,15 @@ impl<T: 'static + Unpin> Sink<T> for AsyncPublisher<T> {
     type Error = RecvError;
 
     fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        if self.event.is_some() {
+        if self.events.len() >= self.buffer_size {
             Poll::Pending
         } else {
             Poll::Ready(Ok(()))
         }
     }
 
-    fn start_send(mut self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
-        let sequence = self.ring.next();
-
-        self.sequence.replace(sequence);
-        self.event.replace(item);
+    fn start_send(mut self: Pin<&mut Self>, event: T) -> Result<(), Self::Error> {
+        self.events.push(event);
 
         Ok(())
     }
@@ -80,11 +82,18 @@ impl<T: 'static + Unpin> Sink<T> for AsyncPublisher<T> {
         mut self: Pin<&mut Self>,
         _cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
-        self.write_to_ring();
+        self.publish();
+
         Poll::Ready(Ok(()))
     }
 
-    fn poll_close(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_close(
+        mut self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        self.buffer_size = 0;
+        self.publish();
+
         drop(self);
         Poll::Ready(Ok(()))
     }

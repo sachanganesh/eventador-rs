@@ -16,7 +16,7 @@ Both sync and async APIs are available.
 
 Basic sync usage:
 
-```rust
+````rust
 let eventbus = Eventador::new(4)?;
 let subscriber = eventbus.subscribe::<usize>();
 
@@ -25,11 +25,11 @@ eventbus.publish(i);
 
 let mut msg = subscriber.recv().unwrap();
 assert_eq!(i, *msg);
-```
+````
 
 Basic async usage:
 
-```rust
+````rust
 let eventbus = Eventador::new(4)?;
 
 let subscriber = eventbus.async_subscriber::<usize>();
@@ -40,7 +40,7 @@ publisher.send(i).await?;
 
 let mut msg = subscriber.recv().await.unwrap();
 assert_eq!(i, *msg);
-```
+````
 
 Please use the provided [example programs](#) for a more thorough approach on how to use this
 crate.
@@ -99,7 +99,7 @@ contention.
 
 ### TypeId
 This crate relies on the use of `TypeId` to determine what type an event is, and what types of
-events a subscriber subscribes to.
+events a subscriber is subscribed to.
 
 ## Future Goals
 

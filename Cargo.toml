@@ -21,6 +21,7 @@ members = [
 [dependencies]
 anyhow = "1.0"
 async-channel = "1.5.1"
+atomic-option = "0.1.2"
 crossbeam = "0.8.0"
 futures = "0.3.12"
 lockfree = "0.5.1"
