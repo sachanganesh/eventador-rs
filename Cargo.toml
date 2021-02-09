@@ -11,6 +11,10 @@ documentation = "https://docs.rs/eventador/"
 readme = "README.md"
 license = "Apache-2.0"
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
@@ -18,12 +22,17 @@ members = [
     "examples/*"
 ]
 
+[features]
+async = ["futures", "async-std"]
+
+
 [dependencies]
 anyhow = "1.0"
-async-std = { version = "1.9.0", features = ["tokio1"] }
 crossbeam = "0.8.0"
-futures = "0.3.12"
 lockfree = "0.5.1"
+
+futures = { version = "0.3.12", optional = true }
+async-std = { version = "1.9.0", features = ["tokio1"], optional = true }
 
 [dev-dependencies]
 async-channel = "1.5.1"

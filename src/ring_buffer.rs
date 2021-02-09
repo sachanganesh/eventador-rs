@@ -48,6 +48,7 @@ impl RingBuffer {
         self.sequencer.next()
     }
 
+    #[cfg(feature = "async")]
     pub(crate) async fn async_next(&self) -> u64 {
         self.sequencer.async_next().await
     }

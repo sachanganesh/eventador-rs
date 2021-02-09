@@ -106,17 +106,28 @@
 //! publish events as the Enum type and not the variant in order to maintain that consistency.
 //!
 
+#[cfg_attr(docsrs, feature(doc_cfg))]
+
 mod alertable;
 mod event;
-mod futures;
 mod publisher;
 mod ring_buffer;
 mod sequence;
 mod subscriber;
 mod wait_strategy;
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+mod futures;
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub use crate::futures::{AsyncPublisher, AsyncSubscriber, PublishError};
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub use ::futures::{SinkExt, StreamExt};
+
 pub use event::EventRead;
 pub use publisher::Publisher;
 pub use subscriber::Subscriber;
@@ -212,7 +223,7 @@ impl Eventador {
     /// Creates a [`Publisher`] that synchronously publishes messages on the event-bus.
     ///
     /// Although the [`Eventador::publish`] function has the exact same behavior, this handle offers
-    /// an API that mirrors the [`AsyncPublisher`].
+    /// an API that mirrors the `AsyncPublisher`.
     ///
     /// # Example
     ///
@@ -283,6 +294,8 @@ impl Eventador {
     /// publisher.send(i).await?;
     /// ```
     ///
+    #[cfg(feature = "async")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
     pub fn async_publisher<T: 'static + Send + Unpin>(
         &self,
         buffer_size: usize,
@@ -310,6 +323,8 @@ impl Eventador {
     /// assert_eq!(i, *msg);
     /// ```
     ///
+    #[cfg(feature = "async")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
     pub fn async_subscriber<T: Send + Unpin>(&self) -> AsyncSubscriber<T> {
         let sequence = Arc::new(Sequence::with_value(self.ring.sequencer().get() + 1));
         self.ring
@@ -336,11 +351,13 @@ impl From<Arc<RingBuffer>> for Eventador {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "async")]
     use crate::futures::publisher::{AsyncPublisher, PublishError};
-    use crate::{Eventador, StreamExt};
+    #[cfg(feature = "async")]
+    use futures::{future::{AbortHandle, Abortable}, SinkExt, StreamExt};
+
+    use crate::Eventador;
     use async_channel::unbounded;
-    use futures::future::{AbortHandle, Abortable};
-    use futures::SinkExt;
     use ntest::timeout;
 
     #[test]
@@ -373,6 +390,7 @@ mod tests {
 
     #[async_std::test]
     #[timeout(5000)]
+    #[cfg(feature = "async")]
     async fn async_publish() {
         println!("Starting test!");
         let res = Eventador::new(4);

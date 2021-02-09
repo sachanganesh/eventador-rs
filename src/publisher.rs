@@ -1,4 +1,3 @@
-use crate::futures::AsyncPublisher;
 use crate::ring_buffer::RingBuffer;
 use crate::Eventador;
 use std::sync::Arc;
@@ -6,7 +5,7 @@ use std::sync::Arc;
 /// A handle to publish events to the event-bus.
 ///
 /// Although the [`Eventador::publish`] function has the exact same behavior, this handle offers an API
-/// that mirrors the [`AsyncPublisher`].
+/// that mirrors the `AsyncPublisher` API.
 ///
 /// # Example
 ///

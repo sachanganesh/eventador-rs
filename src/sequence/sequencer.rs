@@ -35,6 +35,7 @@ impl Sequencer {
             .expect("sequencer could not get next sequence number from sequence 1")
     }
 
+    #[cfg(feature = "async")]
     pub async fn async_next(&self) -> u64 {
         self.async_next_from(1)
             .await
@@ -87,6 +88,7 @@ impl Sequencer {
         }
     }
 
+    #[cfg(feature = "async")]
     pub async fn async_next_from(&self, n: u64) -> anyhow::Result<u64> {
         if n < 1 || n > self.ring_capacity {
             return Err(anyhow::Error::msg("n must be > 0 and < buffer_size"));
