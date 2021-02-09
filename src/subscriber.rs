@@ -26,7 +26,7 @@ use crate::sequence::Sequence;
 /// let mut i: usize = 1234;
 /// eventbus.publish(i);
 ///
-/// let mut msg = subscriber.recv().unwrap();
+/// let mut msg = subscriber.recv();
 /// assert_eq!(i, *msg);
 /// ```
 ///
@@ -77,7 +77,7 @@ where
     /// let mut i: usize = 1234;
     /// eventbus.publish(i);
     ///
-    /// let mut msg = subscriber.recv().unwrap();
+    /// let mut msg = subscriber.recv();
     /// assert_eq!(i, *msg);
     /// ```
     ///

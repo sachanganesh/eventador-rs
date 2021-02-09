@@ -6,34 +6,42 @@
 //!
 //! Basic sync usage:
 //!
-//! ```ignore
-//! let eventbus = Eventador::new(4)?;
+//! ```
+//! use eventador::Eventador;
+//! let eventbus = Eventador::new(4).unwrap();
 //! let subscriber = eventbus.subscribe::<usize>();
 //!
-//! let mut i: usize = 1234;
+//! let i: usize = 1234;
 //! eventbus.publish(i);
 //!
-//! let mut msg = subscriber.recv().unwrap();
+//! let mut publisher = eventbus.publisher();
+//! publisher.send(i + 1111);
+//!
+//! let mut msg = subscriber.recv();
 //! assert_eq!(i, *msg);
+//!
+//! msg = subscriber.recv();
+//! assert_eq!(i + 1111, *msg);
 //! ```
 //!
 //! Basic async usage:
 //!
 //! ```ignore
-//! let eventbus = Eventador::new(4)?;
+//! use eventador::{Eventador, SinkExt};
+//! let eventbus = Eventador::new(4).unwrap();
 //!
 //! let subscriber = eventbus.async_subscriber::<usize>();
-//! let mut publisher: AsyncPublisher<usize> = eventbus.async_publisher();
+//! let mut publisher = eventbus.async_publisher(4);
 //!
-//! let mut i: usize = 1234;
-//! publisher.send(i).await?;
+//! let i: usize = 1234;
+//! publisher.send(i).await.expect("could not publish event");
 //!
 //! let mut msg = subscriber.recv().await.unwrap();
 //! assert_eq!(i, *msg);
 //! ```
 //!
-//! Please use the provided [example programs](#) for a more thorough approach on how to use this
-//! crate.
+//! Please use the provided [example programs](https://github.com/sachanganesh/eventador-rs/tree/main/examples)
+//! for a more thorough approach on how to use this crate.
 //!
 //! # Why?
 //!
@@ -128,7 +136,7 @@ use std::sync::Arc;
 /// let mut i: usize = 1234;
 /// eventbus.publish(i);
 ///
-/// let mut msg = subscriber.recv().unwrap();
+/// let mut msg = subscriber.recv();
 /// assert_eq!(i, *msg);
 /// ```
 ///
@@ -217,7 +225,7 @@ impl Eventador {
     /// let mut i: usize = 1234;
     /// eventbus.publish(i);
     ///
-    /// let mut msg = subscriber.recv().unwrap();
+    /// let mut msg = subscriber.recv();
     /// assert_eq!(i, *msg);
     /// ```
     ///

@@ -17,33 +17,41 @@ Both sync and async APIs are available.
 Basic sync usage:
 
 ````rust
-let eventbus = Eventador::new(4)?;
+use eventador::Eventador;
+let eventbus = Eventador::new(4).unwrap();
 let subscriber = eventbus.subscribe::<usize>();
 
-let mut i: usize = 1234;
+let i: usize = 1234;
 eventbus.publish(i);
 
-let mut msg = subscriber.recv().unwrap();
+let mut publisher = eventbus.publisher();
+publisher.send(i + 1111);
+
+let mut msg = subscriber.recv();
 assert_eq!(i, *msg);
+
+msg = subscriber.recv();
+assert_eq!(i + 1111, *msg);
 ````
 
 Basic async usage:
 
 ````rust
-let eventbus = Eventador::new(4)?;
+use eventador::{Eventador, SinkExt};
+let eventbus = Eventador::new(4).unwrap();
 
 let subscriber = eventbus.async_subscriber::<usize>();
-let mut publisher: AsyncPublisher<usize> = eventbus.async_publisher();
+let mut publisher = eventbus.async_publisher(4);
 
-let mut i: usize = 1234;
-publisher.send(i).await?;
+let i: usize = 1234;
+publisher.send(i).await.expect("could not publish event");
 
 let mut msg = subscriber.recv().await.unwrap();
 assert_eq!(i, *msg);
 ````
 
-Please use the provided [example programs](#) for a more thorough approach on how to use this
-crate.
+Please use the provided [example programs](https://github.com/sachanganesh/eventador-rs/tree/main/examples)
+for a more thorough approach on how to use this crate.
 
 ## Why?
 
@@ -101,10 +109,12 @@ contention.
 This crate relies on the use of `TypeId` to determine what type an event is, and what types of
 events a subscriber is subscribed to.
 
-## Future Goals
+Unfortunately, due to the limitations of Rust reflection tools, an Enum will have a different
+TypeId than an Enum variant. This means that a subscriber must subscribe to the Enum type and
+ignore any variants it's not interested in that it receives. Likewise, the publisher must
+publish events as the Enum type and not the variant in order to maintain that consistency.
 
-The async implementation can be made more efficient by using the Waker
-pattern.
+## Future Goals
 
 The default strategy when a subscriber is lagging (thus preventing new
 events from being published), is to make publishers wait until the
@@ -113,11 +123,6 @@ for all use cases. The Wait Strategy must be made configurable to make
 Eventador versatile to any use case. Some example wait-strategies are
 wait-for-all (default), no-wait, wait-for-duration,
 wait-for-n-publishers, etc.
-
-Fault tolerance can be partially achieved through event sourcing. By
-storing deltas (sequences of events) on disk and periodically squashing
-them to save space, a new *raptor* instance can rebuild the ring buffer
-from prior to the crashed state.
 
 Testing, and most importantly, benchmarking, are not
 fully realized.
