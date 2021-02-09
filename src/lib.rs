@@ -112,12 +112,14 @@ mod publisher;
 mod ring_buffer;
 mod sequence;
 mod subscriber;
+mod wait_strategy;
 
 pub use crate::futures::{AsyncPublisher, AsyncSubscriber, PublishError};
 pub use ::futures::{SinkExt, StreamExt};
 pub use event::EventRead;
 pub use publisher::Publisher;
 pub use subscriber::Subscriber;
+pub use wait_strategy::WaitStrategy;
 
 use crate::ring_buffer::RingBuffer;
 use crate::sequence::Sequence;
@@ -160,7 +162,13 @@ impl Eventador {
     ///
     pub fn new(capacity: u64) -> anyhow::Result<Self> {
         Ok(Self {
-            ring: Arc::new(RingBuffer::new(capacity)?),
+            ring: Arc::new(RingBuffer::new(capacity, WaitStrategy::AllSubscribers)?),
+        })
+    }
+
+    pub fn with_strategy(capacity: u64, wait_strategy: WaitStrategy) -> anyhow::Result<Self> {
+        Ok(Self {
+            ring: Arc::new(RingBuffer::new(capacity, wait_strategy)?),
         })
     }
 

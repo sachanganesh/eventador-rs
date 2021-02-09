@@ -5,6 +5,7 @@ use crossbeam::sync::Parker;
 use crate::event::EventRead;
 use crate::ring_buffer::{EventWrapper, RingBuffer};
 use crate::sequence::Sequence;
+use crate::WaitStrategy;
 
 /// A handle to receive events that were subscribed to from the event-bus.
 ///
@@ -108,8 +109,14 @@ where
                     return event;
                 }
             } else {
-                // @todo you get here when publisher overwrites an event that has not been read yet
-                unreachable!()
+                // Publisher has overwritten an event that has not been read yet
+                match self.ring.wait_strategy() {
+                    WaitStrategy::AllSubscribers => unreachable!(),
+
+                    _ => {
+                        self.sequence.set(envelope_sequence);
+                    }
+                }
             }
         }
     }

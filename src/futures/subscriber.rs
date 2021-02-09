@@ -2,6 +2,7 @@ use crate::alertable::Alertable;
 use crate::event::EventRead;
 use crate::ring_buffer::{EventWrapper, RingBuffer};
 use crate::sequence::Sequence;
+use crate::WaitStrategy;
 use futures::task::{Context, Poll, Waker};
 use futures::Stream;
 use std::pin::Pin;
@@ -99,8 +100,14 @@ impl<'a, T: 'static> Stream for AsyncSubscriber<'a, T> {
                 self.current_event.replace(envelope);
                 return Poll::Pending;
             } else {
-                // @todo you get here when publisher overwrites an event that has not been read yet
-                unreachable!()
+                // Publisher has overwritten an event that has not been read yet
+                match self.ring.wait_strategy() {
+                    WaitStrategy::AllSubscribers => unreachable!(),
+
+                    _ => {
+                        self.sequence.set(envelope_sequence);
+                    }
+                }
             }
         }
     }

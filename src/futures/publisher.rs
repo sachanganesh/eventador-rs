@@ -50,7 +50,8 @@ impl<T: 'static + Unpin> AsyncPublisher<T> {
 
     pub(crate) fn publish(&mut self) {
         while let Some(event) = self.events.pop() {
-            let sequence = self.ring.next();
+            // @todo consider a way to remove `block_on`
+            let sequence = futures::executor::block_on(self.ring.async_next());
 
             let envelope = self
                 .ring

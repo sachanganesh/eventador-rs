@@ -37,6 +37,12 @@ impl<'a, T> Deref for EventRead<'a, T> {
     }
 }
 
+impl<'a, T> AsRef<T> for EventRead<'a, T> {
+    fn as_ref(&self) -> &T {
+        &*self
+    }
+}
+
 pub(crate) struct EventEnvelope {
     sequence: AtomicU64,
     event: Atomic<Event>,
