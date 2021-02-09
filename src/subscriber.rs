@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crossbeam::sync::Parker;
 
 use crate::event::EventRead;
-use crate::ring_buffer::{RingBuffer, EventWrapper};
+use crate::ring_buffer::{EventWrapper, RingBuffer};
 use crate::sequence::Sequence;
 
 /// A handle to receive events that were subscribed to from the event-bus.
@@ -61,7 +61,7 @@ where
         envelope.stop_waiting();
 
         self.sequence.increment();
-        return event_opt
+        return event_opt;
     }
 
     /// Synchronously read an event of the correct type from the event-bus.

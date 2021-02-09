@@ -13,11 +13,13 @@ async fn main() -> anyhow::Result<()> {
         let mut event_ctr = 0;
         while event_ctr < NUM_EVENTS {
             // async_std::task::sleep(std::time::Duration::from_micros(10)).await;
+
             let event = subscriber
                 .next()
                 .await
                 .expect("stream of subscribed events closed");
             println!("Received event: {}", *event);
+
             assert_eq!(event_ctr + 1, *event);
             event_ctr += 1;
         }
@@ -28,11 +30,13 @@ async fn main() -> anyhow::Result<()> {
         let mut i: usize = 1;
         while i <= NUM_EVENTS {
             // async_std::task::sleep(std::time::Duration::from_micros(10)).await;
+
             publisher
                 .send(i)
                 .await
                 .expect("publisher could not publish event");
             println!("Published event: {}", i);
+
             i += 1;
         }
     });

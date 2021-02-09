@@ -1,14 +1,15 @@
 use crate::ring_buffer::RingBuffer;
-use async_channel::RecvError;
 use futures::task::{Context, Poll};
 use futures::Sink;
 use std::pin::Pin;
 use std::sync::Arc;
 
+/// An error thrown by the [`AsyncPublisher`] as part of the `Sink` trait implementation.
+///
 #[derive(Debug, Clone)]
-pub struct AsyncPublishError;
+pub struct PublishError;
 
-impl std::fmt::Display for AsyncPublishError {
+impl std::fmt::Display for PublishError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "publisher encountered error it could not recover from")
     }
@@ -62,7 +63,7 @@ impl<T: 'static + Unpin> AsyncPublisher<T> {
 }
 
 impl<T: 'static + Unpin> Sink<T> for AsyncPublisher<T> {
-    type Error = RecvError;
+    type Error = PublishError;
 
     fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         if self.events.len() >= self.buffer_size {

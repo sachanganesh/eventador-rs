@@ -66,11 +66,11 @@
 //! How an event-bus handles the lagging-consumer problem should be left to the user to decide
 //! through configuration.
 //!
-//! ## LMAX eventador
+//! ## LMAX Disruptor
 //!
-//! The LMAX eventador serves as a basis for a lot of event-bus implementations, though the
-//! contemporary architecture of the eventador looks very different from the one presented in the
-//! outdated LMAX white-paper. Eventador draws from the principles of the current eventador
+//! The LMAX Disruptor serves as a basis for a lot of event-bus implementations, though the
+//! contemporary architecture of the Disruptor looks very different from the one presented in the
+//! outdated LMAX white-paper. Eventador draws from the principles of the current Disruptor
 //! architecture, but the similarities stop there.
 //!
 //! A sequencer atomically assigns an event to an index in the ring buffer on publishing of an
@@ -82,26 +82,33 @@
 //!
 //! ## Lock-free
 //!
-//! Eventador has the potential to be a high-contention (aka bottlenecking) structure to a given
+//! Eventador has the potential to be a high-contention (aka bottle-necking) structure to a given
 //! concurrent program, so the implementation needs to handle contention as effectively as possible.
 //! Atomic CAS operations are generally faster than locking, and is the preferred approach to handle
-//! contention.
+//! contention in this implementation.
 //!
 //! ## TypeId
 //! This crate relies on the use of `TypeId` to determine what type an event is, and what types of
 //! events a subscriber is subscribed to.
 //!
+//! Unfortunately, due to the limitations of Rust reflection tools, an Enum will have a different
+//! TypeId than an Enum variant. This means that a subscriber must subscribe to the Enum type and
+//! ignore any variants it's not interested in that it receives. Likewise, the publisher must
+//! publish events as the Enum type and not the variant in order to maintain that consistency.
+//!
 
 mod alertable;
 mod event;
 mod futures;
+mod publisher;
 mod ring_buffer;
 mod sequence;
 mod subscriber;
 
-pub use crate::futures::{AsyncPublisher, AsyncSubscriber};
+pub use crate::futures::{AsyncPublisher, AsyncSubscriber, PublishError};
 pub use ::futures::{SinkExt, StreamExt};
 pub use event::EventRead;
+pub use publisher::Publisher;
 pub use subscriber::Subscriber;
 
 use crate::ring_buffer::RingBuffer;
@@ -149,7 +156,7 @@ impl Eventador {
         })
     }
 
-    /// Synchronously publishes an event on the event-bus.
+    /// Synchronously publish an event to the event-bus.
     ///
     /// # Example
     ///
@@ -158,7 +165,7 @@ impl Eventador {
     /// ```ignore
     /// let eventbus = Eventador::new(4)?;
     ///
-    /// let mut i: usize = 1234;
+    /// let i: usize = 1234;
     /// eventbus.publish(i);
     /// ```
     ///
@@ -170,10 +177,31 @@ impl Eventador {
         }
     }
 
-    /// Creates a [`Subscriber`] that is subscribed to events of the provided type.
+    /// Creates a [`Publisher`] that synchronously publishes messages on the event-bus.
     ///
-    /// The [`Subscriber`] will not receive intended events that were published to the event-bus
-    /// before time of subscription. It will only receive intended events that are published after
+    /// Although the [`Eventador::publish`] function has the exact same behavior, this handle offers
+    /// an API that mirrors the [`AsyncPublisher`].
+    ///
+    /// # Example
+    ///
+    /// Basic usage:
+    ///
+    /// ```ignore
+    /// let eventbus = Eventador::new(4)?;
+    /// let mut publisher = eventbus.publisher();
+    ///
+    /// let i: usize = 1234;
+    /// publisher.send(i);
+    /// ```
+    ///
+    pub fn publisher(&self) -> Publisher {
+        Publisher::new(self.ring.clone())
+    }
+
+    /// Creates a [`Subscriber`] that subscribes to an event type receives them synchronously.
+    ///
+    /// The [`Subscriber`] will not receive subscribed events that were published to the event-bus
+    /// before time of subscription. It will only receive events that are published after
     /// time of subscription.
     ///
     /// # Example
@@ -208,6 +236,9 @@ impl Eventador {
     /// The buffer size indicates the number of events that can be buffered until a flush is made
     /// to the event bus. Until events are flushed to the event bus, they are not yet published.
     ///
+    /// Because events are buffered, an AsyncPublisher can only publish events of the same
+    /// type. A new AsyncPublisher must be instantiated for events of another type.
+    ///
     /// # Example
     ///
     /// Basic usage:
@@ -227,7 +258,8 @@ impl Eventador {
         AsyncPublisher::new(self.ring.clone(), buffer_size)
     }
 
-    /// Creates an [`AsyncSubscriber`] that can subscribe to events and receive them asynchronously.
+    /// Creates an [`AsyncSubscriber`] that subscribes to an event type and receive them
+    /// asynchronously.
     ///
     /// # Example
     ///
@@ -272,9 +304,9 @@ impl From<Arc<RingBuffer>> for Eventador {
 
 #[cfg(test)]
 mod tests {
-    use crate::futures::publisher::AsyncPublisher;
+    use crate::futures::publisher::{AsyncPublisher, PublishError};
     use crate::{Eventador, StreamExt};
-    use async_channel::{unbounded, RecvError};
+    use async_channel::unbounded;
     use futures::future::{AbortHandle, Abortable};
     use futures::SinkExt;
     use ntest::timeout;
@@ -319,7 +351,7 @@ mod tests {
         let mut subscriber = eventador.async_subscriber::<usize>();
         let mut publisher: AsyncPublisher<usize> = eventador.async_publisher(4);
 
-        let (sender, mut receiver) = unbounded::<Result<usize, RecvError>>();
+        let (sender, mut receiver) = unbounded::<Result<usize, PublishError>>();
 
         let mut i: usize = 1234;
         let mut sent = sender.send(Ok(i)).await;

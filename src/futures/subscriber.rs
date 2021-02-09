@@ -94,7 +94,6 @@ impl<'a, T: 'static> Stream for AsyncSubscriber<'a, T> {
                 if let Some(event) = event_opt {
                     return Poll::Ready(Some(event));
                 }
-                println!("Uh oh");
             } else if sequence > envelope_sequence {
                 envelope.add_subscriber(Box::new(cx.waker().clone()));
                 self.current_event.replace(envelope);
