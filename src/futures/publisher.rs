@@ -55,9 +55,6 @@ impl<T: 'static + Send + Sync + Unpin> AsyncPublisher<T> {
             events: Vec::with_capacity(buffer),
         }
     }
-
-    // pub(crate) fn publish(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), PublishError>> {
-    // }
 }
 
 impl<T: 'static + Send + Sync + Unpin> Sink<T> for AsyncPublisher<T> {
