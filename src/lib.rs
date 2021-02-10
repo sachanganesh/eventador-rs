@@ -1,4 +1,4 @@
-//! This crate provides a lock-free Pub/Sub event-bus based on the eventador pattern from LMAX.
+//! This crate provides a lock-free Pub/Sub event-bus inspired by the LMAX Disruptor.
 //!
 //! Both sync and async APIs are available.
 //!
