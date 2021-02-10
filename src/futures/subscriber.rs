@@ -43,8 +43,6 @@ pub struct AsyncSubscriber<'a, T> {
     _marker: std::marker::PhantomData<&'a T>,
 }
 
-unsafe impl<'a, T> Send for AsyncSubscriber<'a, T> {}
-
 impl<'a, T> AsyncSubscriber<'a, T>
 where
     T: Send,

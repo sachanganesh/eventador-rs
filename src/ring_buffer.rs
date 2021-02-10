@@ -68,9 +68,6 @@ impl RingBuffer {
     }
 }
 
-unsafe impl Send for RingBuffer {}
-unsafe impl Sync for RingBuffer {}
-
 impl Default for RingBuffer {
     fn default() -> Self {
         Self::new(256, WaitStrategy::AllSubscribers).unwrap()

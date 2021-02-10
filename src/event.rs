@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 #[derive(Debug)]
 pub(crate) struct Event {
     pub type_id: TypeId,
-    pub data: Box<dyn Any>,
+    pub data: Box<dyn Any + Send + Sync>,
 }
 
 /// A wrapper that can be de-referenced to access and read the event.
@@ -47,7 +47,7 @@ pub(crate) struct EventEnvelope {
     sequence: AtomicU64,
     event: Atomic<Event>,
     num_waiting: AtomicU64,
-    subscribers: Queue<Option<Box<dyn Alertable>>>,
+    subscribers: Queue<Option<Box<dyn Alertable + Send + Sync>>>,
 }
 
 impl EventEnvelope {
@@ -72,7 +72,7 @@ impl EventEnvelope {
         self.num_waiting.fetch_sub(1, Ordering::Release);
     }
 
-    pub fn add_subscriber(&self, alerter: Box<dyn Alertable>) {
+    pub fn add_subscriber(&self, alerter: Box<dyn Alertable + Send + Sync>) {
         self.subscribers.push(Some(alerter));
     }
 
@@ -94,7 +94,7 @@ impl EventEnvelope {
         return None;
     }
 
-    pub(crate) fn overwrite<T: 'static>(&self, sequence: u64, data: T) {
+    pub(crate) fn overwrite<T: 'static + Send + Sync>(&self, sequence: u64, data: T) {
         let mut event = Owned::new(Event {
             type_id: TypeId::of::<T>(),
             data: Box::new(data),

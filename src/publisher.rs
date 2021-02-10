@@ -43,7 +43,7 @@ impl Publisher {
     /// eventbus.publish(i);
     /// ```
     ///
-    pub fn send<T: 'static + Send>(&mut self, event: T) {
+    pub fn send<T: 'static + Send + Sync>(&mut self, event: T) {
         let sequence = self.ring.next();
 
         let envelope = self

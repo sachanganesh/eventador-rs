@@ -212,7 +212,7 @@ impl Eventador {
     /// eventbus.publish(i);
     /// ```
     ///
-    pub fn publish<T: 'static + Send>(&self, message: T) {
+    pub fn publish<T: 'static + Send + Sync>(&self, message: T) {
         let sequence = self.ring.next();
 
         if let Some(event_store) = self.ring.get_envelope(sequence).clone() {
