@@ -37,7 +37,7 @@ pub struct AsyncPublisher<T> {
     events: Vec<T>,
 }
 
-impl<T: 'static + Unpin> AsyncPublisher<T> {
+impl<T: 'static + Send + Sync + Unpin> AsyncPublisher<T> {
     pub(crate) fn new(ring: Arc<RingBuffer>, buffer: usize) -> Self {
         let buffer = if buffer == 0 { buffer + 1 } else { buffer };
 
@@ -63,7 +63,7 @@ impl<T: 'static + Unpin> AsyncPublisher<T> {
     }
 }
 
-impl<T: 'static + Unpin> Sink<T> for AsyncPublisher<T> {
+impl<T: 'static + Send + Sync + Unpin> Sink<T> for AsyncPublisher<T> {
     type Error = PublishError;
 
     fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {

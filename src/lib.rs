@@ -296,7 +296,7 @@ impl Eventador {
     ///
     #[cfg(feature = "async")]
     #[doc(cfg(feature = "async"))]
-    pub fn async_publisher<T: 'static + Send + Unpin>(
+    pub fn async_publisher<T: 'static + Send + Sync + Unpin>(
         &self,
         buffer_size: usize,
     ) -> AsyncPublisher<T> {
