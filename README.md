@@ -10,9 +10,15 @@
 
 This crate provides a lock-free Pub/Sub event-bus inspired by the LMAX Disruptor.
 
+Users can configure how publishers handle slow subscribers through `WaitStrategy`
+policies.
+
 Both sync and async APIs are available.
 
 ## Examples
+
+Please use the provided [example programs](https://github.com/sachanganesh/eventador-rs/tree/main/examples)
+for a more thorough approach on how to use this crate.
 
 Basic sync usage:
 
@@ -49,9 +55,6 @@ publisher.send(i).await.expect("could not publish event");
 let mut msg = subscriber.recv().await.unwrap();
 assert_eq!(i, *msg);
 ````
-
-Please use the provided [example programs](https://github.com/sachanganesh/eventador-rs/tree/main/examples)
-for a more thorough approach on how to use this crate.
 
 ## Why?
 
