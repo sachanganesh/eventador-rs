@@ -1,6 +1,11 @@
 use crate::ring_buffer::RingBuffer;
-use futures::task::{Context, Poll};
-use futures::Sink;
+use async_stream::stream;
+use futures::{
+    pin_mut,
+    task::{Context, Poll},
+    Sink,
+};
+use futures_lite::StreamExt;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -11,7 +16,10 @@ pub struct PublishError;
 
 impl std::fmt::Display for PublishError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "publisher encountered error it could not recover from")
+        write!(
+            f,
+            "async-publisher could not get an overwriteable envelope from the ring"
+        )
     }
 }
 
@@ -48,19 +56,8 @@ impl<T: 'static + Send + Sync + Unpin> AsyncPublisher<T> {
         }
     }
 
-    pub(crate) fn publish(&mut self) {
-        while let Some(event) = self.events.pop() {
-            // @todo consider a way to remove `block_on`
-            let sequence = futures::executor::block_on(self.ring.async_next());
-
-            let envelope = self
-                .ring
-                .get_envelope(sequence)
-                .expect("ring buffer was not pre-populated with empty event envelopes");
-
-            envelope.overwrite(sequence, event);
-        }
-    }
+    // pub(crate) fn publish(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), PublishError>> {
+    // }
 }
 
 impl<T: 'static + Send + Sync + Unpin> Sink<T> for AsyncPublisher<T> {
@@ -80,24 +77,38 @@ impl<T: 'static + Send + Sync + Unpin> Sink<T> for AsyncPublisher<T> {
         Ok(())
     }
 
-    fn poll_flush(
-        mut self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-    ) -> Poll<Result<(), Self::Error>> {
-        self.publish();
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let ring = self.ring.clone();
+        let stream = stream! {
+            yield ring.async_next().await;
+        };
+        pin_mut!(stream);
+
+        while !self.events.is_empty() {
+            match stream.poll_next(cx) {
+                Poll::Ready(Some(sequence)) => {
+                    if let Some(event) = self.events.pop() {
+                        let envelope = self
+                            .ring
+                            .get_envelope(sequence)
+                            .expect("ring buffer was not pre-populated with empty event envelopes");
+
+                        envelope.overwrite(sequence, event);
+                    }
+                }
+
+                Poll::Ready(None) => return Poll::Ready(Err(PublishError)),
+
+                Poll::Pending => return Poll::Pending,
+            }
+        }
 
         Poll::Ready(Ok(()))
     }
 
-    fn poll_close(
-        mut self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-    ) -> Poll<Result<(), Self::Error>> {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.buffer_size = 0;
-        self.publish();
-
-        drop(self);
-        Poll::Ready(Ok(()))
+        self.poll_flush(cx)
     }
 }
 
