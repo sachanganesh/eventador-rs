@@ -119,20 +119,28 @@ impl EventEnvelope {
                     }
 
                     loop {
-                        if self.num_waiting.compare_and_swap(0, 0, Ordering::AcqRel) == 0 {
-                            break;
-                        } else {
-                            let num_waiting = self.num_waiting.load(Ordering::Acquire);
+                        match self.num_waiting.compare_exchange(
+                            0,
+                            0,
+                            Ordering::Acquire,
+                            Ordering::Relaxed,
+                        ) {
+                            Ok(_) => break,
 
-                            for alerter_opt in
-                                self.subscribers.pop_iter().take(num_waiting as usize)
-                            {
-                                if let Some(alerter) = alerter_opt {
-                                    alerter.alert();
+                            Err(_) => {
+                                let num_waiting = self.num_waiting.load(Ordering::Acquire);
+
+                                for alerter_opt in
+                                    self.subscribers.pop_iter().take(num_waiting as usize)
+                                {
+                                    if let Some(alerter) = alerter_opt {
+                                        alerter.alert();
+                                    }
                                 }
                             }
                         }
                     }
+
                     break;
                 }
 

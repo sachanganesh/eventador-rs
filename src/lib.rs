@@ -353,12 +353,20 @@ impl From<Arc<RingBuffer>> for Eventador {
 mod tests {
     #[cfg(feature = "async")]
     use crate::futures::publisher::{AsyncPublisher, PublishError};
+
     #[cfg(feature = "async")]
-    use futures::{future::{AbortHandle, Abortable}, SinkExt, StreamExt};
+    use futures::{
+        future::{AbortHandle, Abortable},
+        SinkExt, StreamExt,
+    };
+
+    #[cfg(feature = "async")]
+    use async_channel::unbounded;
+
+    #[cfg(feature = "async")]
+    use ntest::timeout;
 
     use crate::Eventador;
-    use async_channel::unbounded;
-    use ntest::timeout;
 
     #[test]
     fn publish_and_subscribe() {

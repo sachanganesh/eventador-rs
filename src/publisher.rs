@@ -1,6 +1,8 @@
 use crate::ring_buffer::RingBuffer;
-use crate::Eventador;
 use std::sync::Arc;
+
+#[allow(unused_imports)]
+use crate::Eventador;
 
 /// A handle to publish events to the event-bus.
 ///

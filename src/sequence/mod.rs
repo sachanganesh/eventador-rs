@@ -23,10 +23,10 @@ impl Sequence {
         self.value.swap(new_value, Ordering::Release)
     }
 
-    pub fn compare_and_swap(&self, expected: u64, new_value: u64) -> bool {
+    pub fn compare_exchange(&self, expected: u64, new_value: u64) -> bool {
         self.value
-            .compare_and_swap(expected, new_value, Ordering::AcqRel)
-            == expected
+            .compare_exchange(expected, new_value, Ordering::Acquire, Ordering::Relaxed)
+            .is_ok()
     }
 
     pub fn increment(&self) -> u64 {

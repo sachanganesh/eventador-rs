@@ -67,13 +67,13 @@ impl Sequencer {
                     }
 
                     WaitStrategy::NoWait => {
-                        if self.cursor.compare_and_swap(current, next as u64) {
+                        if self.cursor.compare_exchange(current, next as u64) {
                             return Ok(next as u64);
                         }
                     }
 
                     WaitStrategy::WaitForDuration(wait) => {
-                        if self.cursor.compare_and_swap(current, next as u64) {
+                        if self.cursor.compare_exchange(current, next as u64) {
                             std::thread::sleep(wait);
 
                             return Ok(next as u64);
@@ -82,7 +82,7 @@ impl Sequencer {
                 }
 
                 self.gating_sequence_cache.set(gating_sequence);
-            } else if self.cursor.compare_and_swap(current, next as u64) {
+            } else if self.cursor.compare_exchange(current, next as u64) {
                 return Ok(next as u64);
             }
         }
@@ -114,13 +114,13 @@ impl Sequencer {
                     }
 
                     WaitStrategy::NoWait => {
-                        if self.cursor.compare_and_swap(current, next as u64) {
+                        if self.cursor.compare_exchange(current, next as u64) {
                             return Ok(next as u64);
                         }
                     }
 
                     WaitStrategy::WaitForDuration(wait) => {
-                        if self.cursor.compare_and_swap(current, next as u64) {
+                        if self.cursor.compare_exchange(current, next as u64) {
                             async_std::task::sleep(wait).await;
 
                             return Ok(next as u64);
@@ -129,7 +129,7 @@ impl Sequencer {
                 }
 
                 self.gating_sequence_cache.set(gating_sequence);
-            } else if self.cursor.compare_and_swap(current, next as u64) {
+            } else if self.cursor.compare_exchange(current, next as u64) {
                 return Ok(next as u64);
             }
         }
