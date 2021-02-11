@@ -103,6 +103,8 @@ impl EventEnvelope {
         let guard = pin();
 
         loop {
+            std::hint::spin_loop();
+
             let current_event = self.event.load(Ordering::Acquire, &guard);
 
             match self

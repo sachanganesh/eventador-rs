@@ -48,6 +48,8 @@ impl Sequencer {
         }
 
         loop {
+            std::hint::spin_loop();
+
             let current: u64 = self.cursor.get();
             let icurrent: i64 = current as i64;
             let next: i64 = (current + n) as i64;
