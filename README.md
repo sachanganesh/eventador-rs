@@ -48,8 +48,8 @@ use eventador::{Eventador, SinkExt, StreamExt};
 
 let eventbus = Eventador::new(4).unwrap();
 
-let mut subscriber = eventador.async_subscriber::<usize>();
-let mut publisher = eventador.async_publisher::<usize>(4);
+let mut subscriber = eventbus.async_subscriber::<usize>();
+let mut publisher = eventbus.async_publisher::<usize>(4);
 
 let i: usize = 1234;
 publisher.send(i).await?;

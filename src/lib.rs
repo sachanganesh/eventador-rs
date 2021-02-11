@@ -36,8 +36,8 @@
 //! use eventador::{Eventador, SinkExt, StreamExt};
 //! let eventbus = Eventador::new(4).unwrap();
 //!
-//! let mut subscriber = eventador.async_subscriber::<usize>();
-//! let mut publisher = eventador.async_publisher::<usize>(4);
+//! let mut subscriber = eventbus.async_subscriber::<usize>();
+//! let mut publisher = eventbus.async_publisher::<usize>(4);
 //!
 //! let i: usize = 1234;
 //! publisher.send(i).await?;
@@ -366,23 +366,23 @@ mod tests {
         let res = Eventador::new(2);
         assert!(res.is_ok());
 
-        let eventador: Eventador = res.unwrap();
+        let eventbus: Eventador = res.unwrap();
 
-        let subscriber = eventador.subscribe::<usize>();
+        let subscriber = eventbus.subscribe::<usize>();
         assert_eq!(1, subscriber.sequence());
 
         let mut i: usize = 1234;
-        eventador.publish(i);
+        eventbus.publish(i);
 
         let mut msg = subscriber.recv();
         assert_eq!(i, *msg);
 
         i += 1111;
-        let eventador2 = eventador.clone();
+        let eventbus2 = eventbus.clone();
 
         std::thread::spawn(move || {
             std::thread::sleep(std::time::Duration::from_secs(1));
-            eventador2.publish(i);
+            eventbus2.publish(i);
         });
 
         msg = subscriber.recv();
@@ -397,10 +397,10 @@ mod tests {
         let res = Eventador::new(4);
         assert!(res.is_ok());
 
-        let eventador: Eventador = res.unwrap();
+        let eventbus: Eventador = res.unwrap();
 
-        let mut subscriber = eventador.async_subscriber::<usize>();
-        let mut publisher: AsyncPublisher<usize> = eventador.async_publisher(4);
+        let mut subscriber = eventbus.async_subscriber::<usize>();
+        let mut publisher: AsyncPublisher<usize> = eventbus.async_publisher(4);
 
         let (sender, mut receiver) = unbounded::<Result<usize, PublishError>>();
 
@@ -421,11 +421,11 @@ mod tests {
         println!("Passed part 1!");
 
         i += 1111;
-        let eventador2 = eventador.clone();
+        let eventbus2 = eventbus.clone();
 
         async_std::task::spawn(async move {
             async_std::task::sleep(std::time::Duration::from_secs(1)).await;
-            eventador2.publish(i);
+            eventbus2.publish(i);
         });
 
         msg = subscriber.next().await.unwrap();
@@ -454,13 +454,13 @@ mod tests {
         assert!(res.is_ok());
         println!("Passed part 1!");
 
-        let eventador: Eventador = res.unwrap();
+        let eventbus: Eventador = res.unwrap();
 
-        let subscriber = eventador.subscribe::<TestEnum>();
+        let subscriber = eventbus.subscribe::<TestEnum>();
         assert_eq!(1, subscriber.sequence());
         println!("Passed part 2!");
 
-        eventador.publish(TestEnum::SampleA);
+        eventbus.publish(TestEnum::SampleA);
 
         let msg = subscriber.recv();
         assert_eq!(TestEnum::SampleA, *msg);
