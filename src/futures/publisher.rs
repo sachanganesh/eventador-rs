@@ -1,11 +1,10 @@
 use crate::ring_buffer::RingBuffer;
 use async_stream::stream;
 use futures::{
-    pin_mut,
     task::{Context, Poll},
     Sink,
 };
-use futures_lite::StreamExt;
+use futures_lite::Stream;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -43,16 +42,25 @@ pub struct AsyncPublisher<T> {
     ring: Arc<RingBuffer>,
     buffer_size: usize,
     events: Vec<T>,
+    sequence_stream: Pin<Box<dyn Stream<Item = u64> + Send + Sync>>,
 }
 
 impl<T: 'static + Send + Sync + Unpin> AsyncPublisher<T> {
     pub(crate) fn new(ring: Arc<RingBuffer>, buffer: usize) -> Self {
         let buffer = if buffer == 0 { buffer + 1 } else { buffer };
 
+        let stream_ring = ring.clone();
+        let stream = Box::pin(stream! {
+            loop {
+                yield stream_ring.async_next().await;
+            }
+        });
+
         Self {
             ring,
             buffer_size: buffer,
             events: Vec::with_capacity(buffer),
+            sequence_stream: stream,
         }
     }
 }
@@ -75,14 +83,8 @@ impl<T: 'static + Send + Sync + Unpin> Sink<T> for AsyncPublisher<T> {
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let ring = self.ring.clone();
-        let stream = stream! {
-            yield ring.async_next().await;
-        };
-        pin_mut!(stream);
-
         while !self.events.is_empty() {
-            match stream.poll_next(cx) {
+            match self.sequence_stream.as_mut().poll_next(cx) {
                 Poll::Ready(Some(sequence)) => {
                     if let Some(event) = self.events.pop() {
                         let envelope = self
