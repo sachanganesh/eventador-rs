@@ -13,14 +13,20 @@ pub(crate) struct Event {
 
 /// A wrapper that can be de-referenced to access and read the event.
 ///
-/// Implements the [`Deref`] trait to access the wrapped event.
+/// Implements the [`Deref`] and ['AsRef`] traits to access the wrapped event.
 ///
 /// # Example
 ///
-/// Basic usage:
+/// Basic `Deref` usage:
 ///
 /// ```ignore
-/// let read_msg: &String = &*readable_event.unwrap();
+/// let read_msg: usize = *readable_event;
+/// ```
+///
+/// Basic `AsRef` usage:
+///
+/// ```ignore
+/// let read_msg: &String = readable_event.as_ref();
 /// ```
 ///
 pub struct EventRead<'a, T: 'a> {
@@ -163,6 +169,25 @@ mod tests {
         let e = EventEnvelope::new();
         let r = unsafe { e.read::<String>() };
         assert!(r.is_none());
+    }
+
+    #[test]
+    fn event_read_deref() {
+        let e = EventEnvelope::new();
+        let i: usize = 5555;
+        e.overwrite(1, i);
+
+        let r = unsafe { e.read::<usize>() }.unwrap();
+        assert_eq!(5555, *r);
+    }
+
+    #[test]
+    fn event_read_as_ref() {
+        let e = EventEnvelope::new();
+        e.overwrite(1, String::from("test"));
+
+        let r = unsafe { e.read::<String>() }.unwrap();
+        assert!(r.eq("test"));
     }
 
     #[test]
