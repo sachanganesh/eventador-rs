@@ -33,7 +33,7 @@ impl std::fmt::Display for PublishError {
 ///
 /// ```ignore
 /// let eventbus = Eventador::new(4)?;
-/// let mut publisher: AsyncPublisher<usize> = eventbus.async_publisher();
+/// let mut publisher: AsyncPublisher<usize> = eventbus.async_publisher(10);
 ///
 /// let mut i: usize = 1234;
 /// publisher.send(i).await?;

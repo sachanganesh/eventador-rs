@@ -33,16 +33,16 @@
 //! Basic async usage:
 //!
 //! ```ignore
-//! use eventador::{Eventador, SinkExt};
+//! use eventador::{Eventador, SinkExt, StreamExt};
 //! let eventbus = Eventador::new(4).unwrap();
 //!
-//! let subscriber = eventbus.async_subscriber::<usize>();
-//! let mut publisher = eventbus.async_publisher(4);
+//! let mut subscriber = eventador.async_subscriber::<usize>();
+//! let mut publisher = eventador.async_publisher::<usize>(4);
 //!
 //! let i: usize = 1234;
-//! publisher.send(i).await.expect("could not publish event");
+//! publisher.send(i).await?;
 //!
-//! let mut msg = subscriber.recv().await.unwrap();
+//! let msg = subscriber.next().await?;
 //! assert_eq!(i, *msg);
 //! ```
 //!
@@ -281,7 +281,7 @@ impl Eventador {
     ///
     /// ```ignore
     /// let eventbus = Eventador::new(4)?;
-    /// let mut publisher: AsyncPublisher<usize> = eventbus.async_publisher();
+    /// let mut publisher: AsyncPublisher<usize> = eventbus.async_publisher(10);
     ///
     /// let mut i: usize = 1234;
     /// publisher.send(i).await?;
