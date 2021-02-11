@@ -2,9 +2,8 @@ use crate::ring_buffer::RingBuffer;
 use async_stream::stream;
 use futures::{
     task::{Context, Poll},
-    Sink,
+    Sink, Stream,
 };
-use futures_lite::Stream;
 use std::pin::Pin;
 use std::sync::Arc;
 

@@ -1,6 +1,6 @@
 [package]
 name = "eventador"
-version = "0.0.16"
+version = "0.0.17"
 edition = "2018"
 authors = ["Sachandhan Ganesh <sachan.ganesh@gmail.com>"]
 description = "lock-free pub/sub event-bus with sync and async APIs"
@@ -23,7 +23,7 @@ members = [
 ]
 
 [features]
-async = ["async-std", "async-stream", "futures", "futures-lite"]
+async = ["async-std", "async-stream", "futures"]
 
 
 [dependencies]
@@ -32,7 +32,6 @@ crossbeam = "0.8.0"
 lockfree = "0.5.1"
 
 futures = { version = "0.3.12", optional = true }
-futures-lite = { version = "1.11.3", optional = true }
 async-std = { version = "1.9.0", features = ["tokio1"], optional = true }
 async-stream = { version = "0.3.0", optional = true }
 
