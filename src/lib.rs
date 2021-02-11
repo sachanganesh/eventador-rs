@@ -53,7 +53,7 @@
 //!
 //! Eventador embraces the Rust model of *Choose Your Guarantees &trade;* by offering different
 //! policies for publishing when subscribers are lagging. These are represented as
-//! [WaitStrategies](https://docs.rs/eventador/latest/eventador/enum.WaitStrategy), with the
+//! [WaitStrategies](https://docs.rs/eventador/latest/eventador/enum.WaitStrategy.html), with the
 //! default being to wait for all subscribers to read an event before it is overwritten.
 //!
 //! ## Design Considerations
