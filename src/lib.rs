@@ -46,7 +46,7 @@
 //! assert_eq!(i, *msg);
 //! ```
 //!
-//! ## Why?
+//! # Why?
 //!
 //! Event-buses ease the development burden of concurrent programs by enabling concurrent
 //! application subroutines to interact and affect other subroutines through events.
@@ -56,19 +56,23 @@
 //! [WaitStrategies](https://docs.rs/eventador/latest/eventador/enum.WaitStrategy.html), with the
 //! default being to wait for all subscribers to read an event before it is overwritten.
 //!
-//! ## Design Considerations
+//! # Feature Flags
+//!
+//! - `async`: enables usage of async APIs
+//!
+//! # Design Considerations
 //!
 //! A general overview of the architecture of the library can be found
 //! [here](https://github.com/sachanganesh/eventador-rs/blob/main/ARCHITECTURE.md).
 //!
-//! ### Ring Buffer
+//! ## Ring Buffer
 //!
 //! Like Eventador, most event-bus implementations use some form of ring buffer for the underlying
 //! data structure to store published events. As such, an Eventador instance cannot indefinitely
 //! grow to accommodate events, unlike a `Vec`. Publishers require configurable policies to decide
 //! how and when to overwrite old data in the ring.
 //!
-//! ### LMAX Disruptor
+//! ## LMAX Disruptor
 //!
 //! The LMAX Disruptor serves as a basis for a lot of event-bus implementations, though the
 //! contemporary architecture of the Disruptor looks very different from the one presented in the
@@ -82,14 +86,14 @@
 //! buffer. On receiving a subscribed message, the sequencer is atomically updated to reflect that
 //! it can now receive the next event.
 //!
-//! ### Lock-free
+//! ## Lock-free
 //!
 //! Eventador has the potential to be a high-contention (aka bottlenecking) structure to a given
 //! concurrent program, so the implementation needs to handle contention as effectively as possible.
 //! Atomic CAS operations are generally faster than locking, and is the preferred approach to handle
 //! contention.
 //!
-//! ### TypeId
+//! ## TypeId
 //! This crate relies on the use of `TypeId` to determine what type an event is, and what types of
 //! events a subscriber is subscribed to.
 //!
@@ -99,7 +103,7 @@
 //! publish events as the Enum type and not the variant in order to maintain that consistency.
 //!
 
-#![feature(doc_cfg)]
+// #![feature(doc_cfg)]
 
 mod alertable;
 mod event;
@@ -110,15 +114,15 @@ mod subscriber;
 mod wait_strategy;
 
 #[cfg(feature = "async")]
-#[doc(cfg(feature = "async"))]
+// #[doc(cfg(feature = "async"))]
 mod futures;
 
 #[cfg(feature = "async")]
-#[doc(cfg(feature = "async"))]
+// #[doc(cfg(feature = "async"))]
 pub use crate::futures::{AsyncPublisher, AsyncSubscriber, PublishError};
 
 #[cfg(feature = "async")]
-#[doc(cfg(feature = "async"))]
+// #[doc(cfg(feature = "async"))]
 pub use ::futures::{SinkExt, StreamExt};
 
 pub use event::EventRead;
@@ -288,7 +292,7 @@ impl Eventador {
     /// ```
     ///
     #[cfg(feature = "async")]
-    #[doc(cfg(feature = "async"))]
+    // #[doc(cfg(feature = "async"))]
     pub fn async_publisher<T: 'static + Send + Sync + Unpin>(
         &self,
         buffer_size: usize,
@@ -317,7 +321,7 @@ impl Eventador {
     /// ```
     ///
     #[cfg(feature = "async")]
-    #[doc(cfg(feature = "async"))]
+    // #[doc(cfg(feature = "async"))]
     pub fn async_subscriber<T: Send + Unpin>(&self) -> AsyncSubscriber<T> {
         let sequence = Arc::new(Sequence::with_value(self.ring.sequencer().get() + 1));
         self.ring

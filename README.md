@@ -68,6 +68,10 @@ policies for publishing when subscribers are lagging. These are represented as
 [WaitStrategies](https://docs.rs/eventador/latest/eventador/enum.WaitStrategy.html), with the
 default being to wait for all subscribers to read an event before it is overwritten.
 
+## Feature Flags
+
+- `async`: enables usage of async APIs
+
 ## Design Considerations
 
 A general overview of the architecture of the library can be found [here](ARCHITECTURE.md).

@@ -1,6 +1,6 @@
 [package]
 name = "eventador"
-version = "0.0.17"
+version = "0.0.18"
 edition = "2018"
 authors = ["Sachandhan Ganesh <sachan.ganesh@gmail.com>"]
 description = "lock-free pub/sub event-bus with sync and async APIs"
