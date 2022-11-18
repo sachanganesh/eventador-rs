@@ -19,11 +19,7 @@ impl RingBuffer {
             let sequencer = Sequencer::new(capacity, wait_strategy);
 
             let ucapacity = capacity as usize;
-            let mut buffer = Vec::with_capacity(ucapacity);
-
-            for i in 0..ucapacity {
-                buffer.insert(i, CachePadded::new(Arc::new(EventEnvelope::new())))
-            }
+            let buffer = vec![CachePadded::new(Arc::new(EventEnvelope::new())); ucapacity];
 
             Ok(Self {
                 capacity,
@@ -44,7 +40,7 @@ impl RingBuffer {
         self.wait_strategy
     }
 
-    pub(crate) fn next(&self) -> u64 {
+    pub(crate) fn next_slot(&self) -> u64 {
         self.sequencer.next()
     }
 
@@ -60,7 +56,7 @@ impl RingBuffer {
     pub(crate) fn get_envelope(&self, sequence: u64) -> Option<EventWrapper> {
         let idx = self.idx_from_sequence(sequence);
 
-        if let Some(envelope) = self.buffer.get(idx).clone() {
+        if let Some(envelope) = self.buffer.get(idx) {
             Some(envelope.clone())
         } else {
             None

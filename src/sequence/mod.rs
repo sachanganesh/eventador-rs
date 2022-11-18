@@ -32,6 +32,16 @@ impl Sequence {
     pub fn increment(&self) -> u64 {
         self.value.fetch_add(1, Ordering::Release)
     }
+
+    pub fn minimum(&self, other: u64) -> u64 {
+        let value = self.get();
+
+        if value < other {
+            value
+        } else {
+            other
+        }
+    }
 }
 
 impl Hash for Sequence {

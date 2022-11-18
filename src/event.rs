@@ -1,6 +1,6 @@
 use crate::alertable::Alertable;
 use crossbeam::epoch::{pin, Atomic, Guard, Owned};
-use lockfree::queue::Queue;
+use crossbeam::queue::SegQueue;
 use std::any::{Any, TypeId};
 use std::ops::Deref;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -53,7 +53,7 @@ pub(crate) struct EventEnvelope {
     sequence: AtomicU64,
     event: Atomic<Event>,
     num_waiting: AtomicU64,
-    subscribers: Queue<Option<Box<dyn Alertable + Send + Sync>>>,
+    subscribers: SegQueue<Box<dyn Alertable + Send + Sync>>,
 }
 
 impl EventEnvelope {
@@ -62,7 +62,7 @@ impl EventEnvelope {
             sequence: AtomicU64::new(0),
             event: Atomic::null(),
             num_waiting: AtomicU64::new(0),
-            subscribers: Queue::new(),
+            subscribers: SegQueue::new(),
         }
     }
 
@@ -79,7 +79,7 @@ impl EventEnvelope {
     }
 
     pub fn add_subscriber(&self, alerter: Box<dyn Alertable + Send + Sync>) {
-        self.subscribers.push(Some(alerter));
+        self.subscribers.push(alerter);
     }
 
     pub unsafe fn read<'a, T: 'static>(&self) -> Option<EventRead<'a, T>> {
@@ -138,10 +138,8 @@ impl EventEnvelope {
                             Err(_) => {
                                 let num_waiting = self.num_waiting.load(Ordering::Acquire);
 
-                                for alerter_opt in
-                                    self.subscribers.pop_iter().take(num_waiting as usize)
-                                {
-                                    if let Some(alerter) = alerter_opt {
+                                for _ in 0..(num_waiting as usize) {
+                                    if let Some(alerter) = self.subscribers.pop() {
                                         alerter.alert();
                                     }
                                 }

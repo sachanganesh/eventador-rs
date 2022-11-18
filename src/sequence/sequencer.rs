@@ -5,8 +5,7 @@ use std::sync::Arc;
 
 pub struct Sequencer {
     cursor: Sequence,
-    gating_sequence_cache: Arc<Sequence>,
-    gating_sequences: SequenceGroup,
+    gating_sequence: Arc<Sequence>,
     ring_capacity: u64,
     wait_strategy: WaitStrategy,
 }
@@ -15,15 +14,14 @@ impl Sequencer {
     pub fn new(ring_capacity: u64, wait_strategy: WaitStrategy) -> Self {
         Self {
             cursor: Sequence::with_value(0),
-            gating_sequence_cache: Arc::new(Sequence::with_value(0)),
-            gating_sequences: SequenceGroup::new(),
+            gating_sequence: Arc::new(Sequence::with_value(0)),
             ring_capacity,
             wait_strategy,
         }
     }
 
     pub(crate) fn register_gating_sequence(&self, sequence: Arc<Sequence>) {
-        self.gating_sequences.add(sequence);
+        self.gating_sequence.set(sequence)
     }
 
     pub fn get(&self) -> u64 {
@@ -55,7 +53,7 @@ impl Sequencer {
             let next: i64 = (current + n) as i64;
 
             let wrap_point: i64 = next - self.ring_capacity as i64;
-            let cached_gating_sequence: i64 = self.gating_sequence_cache.get() as i64;
+            let cached_gating_sequence: i64 = self.gating_sequence.get() as i64;
 
             if wrap_point >= cached_gating_sequence || cached_gating_sequence > icurrent {
                 let gating_sequence = self.gating_sequences.minimum_sequence(current);
@@ -63,6 +61,7 @@ impl Sequencer {
                 match self.wait_strategy {
                     WaitStrategy::AllSubscribers => {
                         if wrap_point > gating_sequence as i64 {
+                            // @todo refactor or consider using yield_now
                             std::thread::sleep(std::time::Duration::from_micros(100));
                             continue;
                         }
@@ -83,7 +82,7 @@ impl Sequencer {
                     }
                 }
 
-                self.gating_sequence_cache.set(gating_sequence);
+                self.gating_sequence.set(gating_sequence);
             } else if self.cursor.compare_exchange(current, next as u64) {
                 return Ok(next as u64);
             }
@@ -102,7 +101,7 @@ impl Sequencer {
             let next: i64 = (current + n) as i64;
 
             let wrap_point: i64 = next - self.ring_capacity as i64;
-            let cached_gating_sequence: i64 = self.gating_sequence_cache.get() as i64;
+            let cached_gating_sequence: i64 = self.gating_sequence.get() as i64;
 
             if wrap_point >= cached_gating_sequence || cached_gating_sequence > icurrent {
                 let gating_sequence = self.gating_sequences.minimum_sequence(current);
@@ -130,7 +129,7 @@ impl Sequencer {
                     }
                 }
 
-                self.gating_sequence_cache.set(gating_sequence);
+                self.gating_sequence.set(gating_sequence);
             } else if self.cursor.compare_exchange(current, next as u64) {
                 return Ok(next as u64);
             }

@@ -44,7 +44,7 @@ impl Publisher {
     /// ```
     ///
     pub fn send<T: 'static + Send + Sync>(&mut self, event: T) {
-        let sequence = self.ring.next();
+        let sequence = self.ring.next_slot();
 
         let envelope = self
             .ring

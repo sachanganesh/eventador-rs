@@ -210,10 +210,10 @@ impl Eventador {
     /// ```
     ///
     pub fn publish<T: 'static + Send + Sync>(&self, message: T) {
-        let sequence = self.ring.next();
+        let sequence = self.ring.next_slot();
 
-        if let Some(event_store) = self.ring.get_envelope(sequence).clone() {
-            event_store.overwrite::<T>(sequence, message);
+        if let Some(envelope) = self.ring.get_envelope(sequence).clone() {
+            envelope.overwrite::<T>(sequence, message);
         }
     }
 

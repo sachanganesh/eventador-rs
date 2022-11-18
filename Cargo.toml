@@ -29,7 +29,6 @@ async = ["async-std", "async-stream", "futures"]
 [dependencies]
 anyhow = "1.0"
 crossbeam = "0.8.0"
-lockfree = "0.5.1"
 
 futures = { version = "0.3.12", optional = true }
 async-std = { version = "1.9.0", features = ["tokio1"], optional = true }
