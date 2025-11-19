@@ -1,6 +1,6 @@
 use crate::alertable::Alertable;
 use crossbeam::epoch::{pin, Atomic, Guard, Owned};
-use lockfree::queue::Queue;
+use lock_freedom::queue::Queue;
 use std::any::{Any, TypeId};
 use std::ops::Deref;
 use std::sync::atomic::{AtomicU64, Ordering};

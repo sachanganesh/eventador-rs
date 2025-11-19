@@ -1,5 +1,5 @@
 use crate::sequence::Sequence;
-use lockfree::set::{Removed, Set};
+use lock_freedom::set::{Removed, Set};
 use std::sync::Arc;
 
 pub struct SequenceGroup {

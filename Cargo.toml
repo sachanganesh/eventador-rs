@@ -18,9 +18,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
-members = [
-    "examples/*"
-]
+members = ["examples/*"]
 
 [features]
 async = ["async-std", "async-stream", "futures"]
@@ -29,7 +27,7 @@ async = ["async-std", "async-stream", "futures"]
 [dependencies]
 anyhow = "1.0"
 crossbeam = "0.8.0"
-lockfree = "0.5.1"
+lock_freedom = "0.1"
 
 futures = { version = "0.3.12", optional = true }
 async-std = { version = "1.9.0", features = ["tokio1"], optional = true }
